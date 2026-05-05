@@ -31,6 +31,7 @@ struct PlainTextView: NSViewRepresentable {
         context.coordinator.textView = textView
 
         textView.string = text
+        context.coordinator.lastSyncedText = text
 
         return scrollView
     }
@@ -40,25 +41,20 @@ struct PlainTextView: NSViewRepresentable {
 
         guard let textView = scrollView.documentView as? PlainTextNSTextView else { return }
 
-        if context.coordinator.isProgrammaticChange {
-            context.coordinator.isProgrammaticChange = false
+        // The text view is the source of truth when it already has the text.
+        // Skip sync to avoid loops and preserve undo history.
+        if textView.string == text {
+            context.coordinator.lastSyncedText = text
             return
         }
 
-        // When the text view is first responder, it is the source of truth.
-        // Do not overwrite it from SwiftUI state — that would create loops and
-        // wipe undo history.
-        if textView.window?.firstResponder == textView {
-            return
-        }
-
-        if textView.string != text {
-            let undoManager = textView.undoManager
-            undoManager?.disableUndoRegistration()
-            textView.string = text
-            undoManager?.enableUndoRegistration()
-            undoManager?.removeAllActions()
-        }
+        // External change: sync from binding to text view.
+        context.coordinator.lastSyncedText = text
+        let undoManager = textView.undoManager
+        undoManager?.disableUndoRegistration()
+        textView.string = text
+        undoManager?.enableUndoRegistration()
+        undoManager?.removeAllActions()
     }
 
     func makeCoordinator() -> Coordinator {
@@ -72,7 +68,7 @@ struct PlainTextView: NSViewRepresentable {
         private var appendObserver: NSObjectProtocol?
         private var clearObserver: NSObjectProtocol?
         private var undoBreakWorkItem: DispatchWorkItem?
-        var isProgrammaticChange = false
+        var lastSyncedText: String = ""
 
         init(_ parent: PlainTextView) {
             self.parent = parent
@@ -123,9 +119,9 @@ struct PlainTextView: NSViewRepresentable {
         }
 
         func textDidChange(_ notification: Notification) {
-            isProgrammaticChange = false
             guard let textView = textView else { return }
 
+            lastSyncedText = textView.string
             parent.text = textView.string
             parent.onTextChange()
 
@@ -138,8 +134,6 @@ struct PlainTextView: NSViewRepresentable {
         }
 
         private func insertCapture(prefix: String, content: String, into textView: NSTextView) {
-            isProgrammaticChange = true
-
             let current = textView.string
             var trimmed = current
             while trimmed.hasSuffix("\n") {
@@ -164,8 +158,6 @@ struct PlainTextView: NSViewRepresentable {
         }
 
         private func clearText(in textView: NSTextView) {
-            isProgrammaticChange = true
-
             let fullRange = NSRange(location: 0, length: textView.string.utf16.count)
 
             if textView.shouldChangeText(in: fullRange, replacementString: "") {
