@@ -4,6 +4,7 @@ struct ContentView: View {
     @EnvironmentObject var store: ScratchpadStore
     @State private var showingClearAlert = false
     @State private var isShowingClips = false
+    @State private var isPinned = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -16,6 +17,35 @@ struct ContentView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(Color.orange.opacity(0.1))
             }
+
+            HStack {
+                Spacer()
+
+                HStack(spacing: 16) {
+                    Button {
+                        isPinned.toggle()
+                        NotificationCenter.default.post(name: .scratchpadPinChanged, object: isPinned)
+                    } label: {
+                        Image(systemName: isPinned ? "pin.fill" : "pin")
+                            .font(.body)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundColor(isPinned ? .primary : .secondary)
+                    .help("Pin window")
+                    .accessibilityLabel("Pin window")
+
+                    Button {
+                    } label: {
+                        Image(systemName: "gearshape")
+                            .font(.body)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Settings")
+                    .accessibilityLabel("Settings")
+                }
+            }
+            .padding(.horizontal, 14)
+            .frame(height: 32)
 
             PlainTextView(text: $store.noteText) {
                 store.noteDidChange()
@@ -84,7 +114,7 @@ struct ContentView: View {
                 }
             }
             .padding(.horizontal, 14)
-            .frame(height: 42)
+            .frame(height: 32)
 
             if let message = store.toolbarMessage {
                 Text(message)

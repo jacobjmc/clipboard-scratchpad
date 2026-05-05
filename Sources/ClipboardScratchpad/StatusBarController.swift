@@ -25,6 +25,25 @@ final class StatusBarController {
             guard let self = self, self.popover.isShown else { return }
             self.closePopover(event)
         }
+
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(pinChanged(_:)),
+            name: .scratchpadPinChanged,
+            object: nil
+        )
+    }
+
+    @objc private func pinChanged(_ notification: Notification) {
+        guard let pinned = notification.object as? Bool else { return }
+        popover.behavior = pinned ? .applicationDefined : .transient
+        if pinned {
+            eventMonitor?.stop()
+        } else {
+            if popover.isShown {
+                eventMonitor?.start()
+            }
+        }
     }
 
     @objc func togglePopover(_ sender: AnyObject?) {
