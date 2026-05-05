@@ -45,9 +45,14 @@ struct PlainTextView: NSViewRepresentable {
             return
         }
 
-        if textView.string != text {
-            print("External text sync happened — undo history will be cleared")
+        // When the text view is first responder, it is the source of truth.
+        // Do not overwrite it from SwiftUI state — that would create loops and
+        // wipe undo history.
+        if textView.window?.firstResponder == textView {
+            return
+        }
 
+        if textView.string != text {
             let undoManager = textView.undoManager
             undoManager?.disableUndoRegistration()
             textView.string = text
