@@ -1,129 +1,178 @@
 import Foundation
 import Combine
 import AppKit
-import os.log
 
 final class ScratchpadStore: ObservableObject {
-    @Published private(set) var blocks: [ScratchBlock] = []
-    @Published var isCapturing: Bool = false {
-        didSet { updateCaptureState() }
-    }
+    @Published var noteText: String = ""
+    @Published var isCapturing: Bool = false
     @Published var persistenceWarning: String? = nil
+    @Published var toolbarMessage: String? = nil
 
+    private let maxLength = 100_000
+    private let saveInterval: TimeInterval = 0.4
+    private var saveWorkItem: DispatchWorkItem?
+    private var toolbarMessageWorkItem: DispatchWorkItem?
+    private var lastCapturedText: String? = nil
+    private let clipboardMonitor = ClipboardMonitor()
     private let storeURL: URL
-    private let maxBlocks = 500
-    private let maxContentLength = 10000
-    private let logger = Logger(subsystem: "com.clipboardscratchpad", category: "Store")
-    private lazy var clipboardMonitor = ClipboardMonitor()
+    private let backupURL: URL
 
     init() {
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        let dir = appSupport.appendingPathComponent("ClipboardScratchpad", isDirectory: true)
+        let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+            .appendingPathComponent("ClipboardScratchpad", isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         self.storeURL = dir.appendingPathComponent("store.json")
+        self.backupURL = dir.appendingPathComponent("store.blocks.backup.json")
         load()
     }
 
-    func appendManual(content: String) {
-        let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
-        let final = String(trimmed.prefix(maxContentLength)) + (trimmed.count > maxContentLength ? "…" : "")
-        let block = ScratchBlock.manual(ManualBlock(id: UUID(), timestamp: Date(), content: final))
-        blocks.append(block)
-        save()
-    }
+    // MARK: - Capture
 
-    func appendCapture(content: String, sourceAppName: String?, sourceBundleID: String?) {
-        let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
-        if let lastCaptured = blocks.last(where: {
-            if case .captured = $0 { return true }
-            return false
-        }), lastCaptured.content.trimmingCharacters(in: .whitespacesAndNewlines) == trimmed {
-            return
-        }
-        if blocks.count >= maxBlocks {
-            persistenceWarning = "Maximum block count reached. Capture paused."
-            isCapturing = false
-            return
-        }
-        let final = String(trimmed.prefix(maxContentLength)) + (trimmed.count > maxContentLength ? "…" : "")
-        let block = ScratchBlock.captured(CapturedBlock(
-            id: UUID(),
-            timestamp: Date(),
-            content: final,
-            sourceAppName: sourceAppName,
-            sourceBundleID: sourceBundleID
-        ))
-        blocks.append(block)
-        save()
-    }
-
-    func deleteBlock(id: UUID) {
-        blocks.removeAll { $0.id == id }
-        save()
-    }
-
-    func convertToManual(id: UUID) {
-        guard let index = blocks.firstIndex(where: { $0.id == id }) else { return }
-        switch blocks[index] {
-        case .captured(let captured):
-            let manual = ScratchBlock.manual(ManualBlock(
-                id: captured.id,
-                timestamp: captured.timestamp,
-                content: captured.content
-            ))
-            blocks[index] = manual
-            save()
-        default:
-            break
-        }
-    }
-
-    func copyAll() -> String {
-        blocks.map(\.content).joined(separator: "\n\n")
-    }
-
-    func clear() {
-        blocks.removeAll()
-        save()
-    }
-
-    func writeToPasteboard(_ string: String) {
-        let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
-        pasteboard.setString(string, forType: .string)
-        clipboardMonitor.noteExternalPasteboardWrite()
-    }
-
-    private func updateCaptureState() {
-        if isCapturing {
+    func setCapturing(_ capturing: Bool) {
+        isCapturing = capturing
+        if capturing {
             clipboardMonitor.start { [weak self] content, name, bundleID in
-                self?.appendCapture(content: content, sourceAppName: name, sourceBundleID: bundleID)
+                DispatchQueue.main.async {
+                    self?.handleCapture(content: content, appName: name)
+                }
             }
         } else {
             clipboardMonitor.stop()
         }
     }
 
-    private func load() {
-        guard let data = try? Data(contentsOf: storeURL) else { return }
-        do {
-            blocks = try JSONDecoder().decode([ScratchBlock].self, from: data)
-        } catch {
-            logger.error("Failed to load store: \(error.localizedDescription)")
-            persistenceWarning = "Couldn’t load previous scratchpad. Starting fresh."
+    private func handleCapture(content: String, appName: String?) {
+        let normalized = content.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalized.isEmpty else { return }
+        guard normalized != lastCapturedText else { return }
+
+        if noteText.count >= maxLength {
+            showToolbarMessage("Note is full.")
+            return
         }
+
+        let prefix: String
+        if let appName = appName, !appName.isEmpty {
+            prefix = "[\(formattedTime()) · \(appName)]"
+        } else {
+            prefix = "[\(formattedTime())]"
+        }
+
+        var newText = noteText
+        // Remove only trailing newlines, not spaces/tabs
+        while newText.hasSuffix("\n") {
+            newText.removeLast()
+        }
+        if !newText.isEmpty {
+            newText += "\n\n"
+        }
+        newText += prefix + "\n" + content
+
+        noteText = newText
+        lastCapturedText = normalized
+        saveImmediately()
     }
 
-    private func save() {
+    private func formattedTime() -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "h:mm a"
+        return formatter.string(from: Date())
+    }
+
+    // MARK: - Pasteboard
+
+    func copyAll() {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(noteText, forType: .string)
+        clipboardMonitor.noteExternalPasteboardWrite()
+    }
+
+    func clear() {
+        noteText = ""
+        lastCapturedText = nil
+        saveImmediately()
+    }
+
+    // MARK: - Autosave
+
+    func scheduleSave() {
+        saveWorkItem?.cancel()
+        let workItem = DispatchWorkItem { [weak self] in
+            self?.saveImmediately()
+        }
+        saveWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + saveInterval, execute: workItem)
+    }
+
+    private func saveImmediately() {
+        saveWorkItem?.cancel()
+        let state = StoreState(noteText: noteText)
         do {
-            let data = try JSONEncoder().encode(blocks)
+            let data = try JSONEncoder().encode(state)
             try data.write(to: storeURL)
             persistenceWarning = nil
         } catch {
-            logger.error("Failed to save store: \(error.localizedDescription)")
             persistenceWarning = "Couldn’t save changes. Content will remain until the app quits."
         }
+    }
+
+    // MARK: - Load / Migration
+
+    private func load() {
+        // Try new format first
+        if let data = try? Data(contentsOf: storeURL) {
+            if let state = try? JSONDecoder().decode(StoreState.self, from: data) {
+                noteText = state.noteText
+                return
+            }
+            // Try old format
+            if let legacy = try? JSONDecoder().decode([LegacyScratchBlock].self, from: data) {
+                migrate(legacyBlocks: legacy)
+                return
+            }
+        }
+        noteText = ""
+    }
+
+    private func migrate(legacyBlocks: [LegacyScratchBlock]) {
+        var parts: [String] = []
+        let formatter = DateFormatter()
+        formatter.dateFormat = "h:mm a"
+
+        for block in legacyBlocks {
+            switch block {
+            case .manual(_, _, let content):
+                parts.append(content)
+            case .captured(_, let timestamp, let content, let sourceApp):
+                let time = formatter.string(from: timestamp)
+                if let app = sourceApp, !app.isEmpty {
+                    parts.append("[\(time) · \(app)]\n\(content)")
+                } else {
+                    parts.append("[\(time)]\n\(content)")
+                }
+            }
+        }
+
+        noteText = parts.joined(separator: "\n\n")
+
+        // Backup old file
+        if let data = try? Data(contentsOf: storeURL) {
+            try? data.write(to: backupURL)
+        }
+
+        saveImmediately()
+    }
+
+    // MARK: - Toolbar message
+
+    private func showToolbarMessage(_ message: String) {
+        toolbarMessage = message
+        toolbarMessageWorkItem?.cancel()
+        let workItem = DispatchWorkItem { [weak self] in
+            self?.toolbarMessage = nil
+        }
+        toolbarMessageWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2, execute: workItem)
     }
 }

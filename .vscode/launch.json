@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:clipboard-scratchpad}",
+            "name": "Debug ClipboardScratchpad",
+            "target": "ClipboardScratchpad",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug ClipboardScratchpad"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:clipboard-scratchpad}",
+            "name": "Release ClipboardScratchpad",
+            "target": "ClipboardScratchpad",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release ClipboardScratchpad"
+        }
+    ]
+}
