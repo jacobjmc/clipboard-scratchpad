@@ -1,0 +1,54 @@
+{
+  "": {
+    "swift-dependencies": "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/master.swiftdeps"
+  },
+  "/Users/jacob/Documents/code/clipboard-scratchpad/Sources/ClipboardScratchpad/AppDelegate.swift": {
+    "dependencies": "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/AppDelegate.d",
+    "object": "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/AppDelegate.swift.o",
+    "swiftmodule": "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/AppDelegate~partial.swiftmodule",
+    "swift-dependencies": "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/AppDelegate.swiftdeps",
+    "diagnostics": "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/AppDelegate.dia"
+  },
+  "/Users/jacob/Documents/code/clipboard-scratchpad/Sources/ClipboardScratchpad/ClipboardMonitor.swift": {
+    "dependencies": "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/ClipboardMonitor.d",
+    "object": "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/ClipboardMonitor.swift.o",
+    "swiftmodule": "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/ClipboardMonitor~partial.swiftmodule",
+    "swift-dependencies": "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/ClipboardMonitor.swiftdeps",
+    "diagnostics": "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/ClipboardMonitor.dia"
+  },
+  "/Users/jacob/Documents/code/clipboard-scratchpad/Sources/ClipboardScratchpad/ContentView.swift": {
+    "dependencies": "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/ContentView.d",
+    "object": "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/ContentView.swift.o",
+    "swiftmodule": "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/ContentView~partial.swiftmodule",
+    "swift-dependencies": "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/ContentView.swiftdeps",
+    "diagnostics": "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/ContentView.dia"
+  },
+  "/Users/jacob/Documents/code/clipboard-scratchpad/Sources/ClipboardScratchpad/Models.swift": {
+    "dependencies": "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/Models.d",
+    "object": "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/Models.swift.o",
+    "swiftmodule": "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/Models~partial.swiftmodule",
+    "swift-dependencies": "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/Models.swiftdeps",
+    "diagnostics": "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/Models.dia"
+  },
+  "/Users/jacob/Documents/code/clipboard-scratchpad/Sources/ClipboardScratchpad/ScratchpadStore.swift": {
+    "dependencies": "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/ScratchpadStore.d",
+    "object": "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/ScratchpadStore.swift.o",
+    "swiftmodule": "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/ScratchpadStore~partial.swiftmodule",
+    "swift-dependencies": "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/ScratchpadStore.swiftdeps",
+    "diagnostics": "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/ScratchpadStore.dia"
+  },
+  "/Users/jacob/Documents/code/clipboard-scratchpad/Sources/ClipboardScratchpad/StatusBarController.swift": {
+    "dependencies": "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/StatusBarController.d",
+    "object": "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/StatusBarController.swift.o",
+    "swiftmodule": "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/StatusBarController~partial.swiftmodule",
+    "swift-dependencies": "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/StatusBarController.swiftdeps",
+    "diagnostics": "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/StatusBarController.dia"
+  },
+  "/Users/jacob/Documents/code/clipboard-scratchpad/Sources/ClipboardScratchpad/main.swift": {
+    "dependencies": "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/main.d",
+    "object": "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/main.swift.o",
+    "swiftmodule": "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/main~partial.swiftmodule",
+    "swift-dependencies": "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/main.swiftdeps",
+    "diagnostics": "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/main.dia"
+  }
+}

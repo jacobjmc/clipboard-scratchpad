@@ -1,0 +1,377 @@
+{
+  "builtTestProducts" : [
+
+  ],
+  "copyCommands" : {
+
+  },
+  "explicitTargetDependencyImportCheckingMode" : {
+    "none" : {
+
+    }
+  },
+  "generatedSourceTargetSet" : [
+
+  ],
+  "pluginDescriptions" : [
+
+  ],
+  "swiftCommands" : {
+    "C.ClipboardScratchpad-arm64-apple-macosx26.0-debug.module" : {
+      "executable" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "fileList" : "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/sources",
+      "importPath" : "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/jacob/Documents/code/clipboard-scratchpad/Sources/ClipboardScratchpad/AppDelegate.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jacob/Documents/code/clipboard-scratchpad/Sources/ClipboardScratchpad/ClipboardMonitor.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jacob/Documents/code/clipboard-scratchpad/Sources/ClipboardScratchpad/ContentView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jacob/Documents/code/clipboard-scratchpad/Sources/ClipboardScratchpad/Models.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jacob/Documents/code/clipboard-scratchpad/Sources/ClipboardScratchpad/ScratchpadStore.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jacob/Documents/code/clipboard-scratchpad/Sources/ClipboardScratchpad/StatusBarController.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jacob/Documents/code/clipboard-scratchpad/Sources/ClipboardScratchpad/main.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/sources"
+        }
+      ],
+      "isLibrary" : false,
+      "moduleName" : "ClipboardScratchpad",
+      "moduleOutputPath" : "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/Modules/ClipboardScratchpad.swiftmodule",
+      "objects" : [
+        "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/AppDelegate.swift.o",
+        "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/ClipboardMonitor.swift.o",
+        "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/ContentView.swift.o",
+        "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/Models.swift.o",
+        "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/ScratchpadStore.swift.o",
+        "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/StatusBarController.swift.o",
+        "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/main.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx14.0",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-index-store-path",
+        "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-j12",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-module-cache-path",
+        "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ModuleCache",
+        "-parseable-output",
+        "-Xfrontend",
+        "-entry-point-function-name",
+        "-Xfrontend",
+        "ClipboardScratchpad_main",
+        "-swift-version",
+        "5",
+        "-plugin-path",
+        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+        "-sdk",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+        "-I",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-L",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "clipboard_scratchpad"
+      ],
+      "outputFileMapPath" : "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/AppDelegate.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/ClipboardMonitor.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/ContentView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/Models.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/ScratchpadStore.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/StatusBarController.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/main.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/Modules/ClipboardScratchpad.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/Users/jacob/Documents/code/clipboard-scratchpad/Sources/ClipboardScratchpad/AppDelegate.swift",
+        "/Users/jacob/Documents/code/clipboard-scratchpad/Sources/ClipboardScratchpad/ClipboardMonitor.swift",
+        "/Users/jacob/Documents/code/clipboard-scratchpad/Sources/ClipboardScratchpad/ContentView.swift",
+        "/Users/jacob/Documents/code/clipboard-scratchpad/Sources/ClipboardScratchpad/Models.swift",
+        "/Users/jacob/Documents/code/clipboard-scratchpad/Sources/ClipboardScratchpad/ScratchpadStore.swift",
+        "/Users/jacob/Documents/code/clipboard-scratchpad/Sources/ClipboardScratchpad/StatusBarController.swift",
+        "/Users/jacob/Documents/code/clipboard-scratchpad/Sources/ClipboardScratchpad/main.swift"
+      ],
+      "tempsPath" : "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build",
+      "wholeModuleOptimization" : false
+    }
+  },
+  "swiftFrontendCommands" : {
+
+  },
+  "swiftTargetScanArgs" : {
+    "ClipboardScratchpad" : [
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "-module-name",
+      "ClipboardScratchpad",
+      "-package-name",
+      "clipboard_scratchpad",
+      "-c",
+      "/Users/jacob/Documents/code/clipboard-scratchpad/Sources/ClipboardScratchpad/AppDelegate.swift",
+      "/Users/jacob/Documents/code/clipboard-scratchpad/Sources/ClipboardScratchpad/ClipboardMonitor.swift",
+      "/Users/jacob/Documents/code/clipboard-scratchpad/Sources/ClipboardScratchpad/ContentView.swift",
+      "/Users/jacob/Documents/code/clipboard-scratchpad/Sources/ClipboardScratchpad/Models.swift",
+      "/Users/jacob/Documents/code/clipboard-scratchpad/Sources/ClipboardScratchpad/ScratchpadStore.swift",
+      "/Users/jacob/Documents/code/clipboard-scratchpad/Sources/ClipboardScratchpad/StatusBarController.swift",
+      "/Users/jacob/Documents/code/clipboard-scratchpad/Sources/ClipboardScratchpad/main.swift",
+      "-I",
+      "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/Modules",
+      "-target",
+      "arm64-apple-macosx14.0",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-index-store-path",
+      "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-j12",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-module-cache-path",
+      "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ModuleCache",
+      "-parseable-output",
+      "-Xfrontend",
+      "-entry-point-function-name",
+      "-Xfrontend",
+      "ClipboardScratchpad_main",
+      "-swift-version",
+      "5",
+      "-plugin-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+      "-sdk",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+      "-I",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-L",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "clipboard_scratchpad",
+      "-driver-use-frontend-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+    ]
+  },
+  "targetDependencyMap" : {
+    "ClipboardScratchpad" : [
+
+    ]
+  },
+  "testDiscoveryCommands" : {
+
+  },
+  "testEntryPointCommands" : {
+
+  },
+  "traitConfiguration" : {
+    "default" : {
+
+    }
+  },
+  "writeCommands" : {
+    "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad-entitlement.plist" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<entitlement-plist>"
+        },
+        {
+          "kind" : "virtual",
+          "name" : "<com.apple.security.get-task-allow>"
+        }
+      ],
+      "outputFilePath" : "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad-entitlement.plist"
+    },
+    "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jacob/Documents/code/clipboard-scratchpad/Sources/ClipboardScratchpad/AppDelegate.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jacob/Documents/code/clipboard-scratchpad/Sources/ClipboardScratchpad/ClipboardMonitor.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jacob/Documents/code/clipboard-scratchpad/Sources/ClipboardScratchpad/ContentView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jacob/Documents/code/clipboard-scratchpad/Sources/ClipboardScratchpad/Models.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jacob/Documents/code/clipboard-scratchpad/Sources/ClipboardScratchpad/ScratchpadStore.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jacob/Documents/code/clipboard-scratchpad/Sources/ClipboardScratchpad/StatusBarController.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jacob/Documents/code/clipboard-scratchpad/Sources/ClipboardScratchpad/main.swift"
+        }
+      ],
+      "outputFilePath" : "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/sources"
+    },
+    "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.product/Objects.LinkFileList" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<link-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/AppDelegate.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/ClipboardMonitor.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/ContentView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/Models.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/ScratchpadStore.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/StatusBarController.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.build/main.swift.o"
+        }
+      ],
+      "outputFilePath" : "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/ClipboardScratchpad.product/Objects.LinkFileList"
+    },
+    "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt" : {
+      "alwaysOutOfDate" : true,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<swift-get-version>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+        }
+      ],
+      "outputFilePath" : "/Users/jacob/Documents/code/clipboard-scratchpad/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt"
+    }
+  }
+}
