@@ -91,7 +91,6 @@ final class ScratchpadStore: ObservableObject {
     func clear() {
         noteText = ""
         updatedAt = Date()
-        lastCapturedClipText = nil
         saveImmediately()
 
         NotificationCenter.default.post(name: .scratchpadClearText, object: nil)

@@ -90,6 +90,7 @@ struct PlainTextView: NSViewRepresentable {
         private var insertObserver: NSObjectProtocol?
         private var clearObserver: NSObjectProtocol?
         private var undoBreakWorkItem: DispatchWorkItem?
+        private var lastSelectedRange: NSRange = NSRange(location: 0, length: 0)
         var lastSyncedText: String = ""
 
         init(_ parent: PlainTextView) {
@@ -142,6 +143,8 @@ struct PlainTextView: NSViewRepresentable {
         func textDidChange(_ notification: Notification) {
             guard let textView = textView else { return }
 
+            lastSelectedRange = textView.selectedRange()
+
             let previousText = lastSyncedText
             let currentText = textView.string
             lastSyncedText = textView.string
@@ -161,6 +164,11 @@ struct PlainTextView: NSViewRepresentable {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.35, execute: workItem)
         }
 
+        func textViewDidChangeSelection(_ notification: Notification) {
+            guard let textView = notification.object as? NSTextView else { return }
+            lastSelectedRange = textView.selectedRange()
+        }
+
         private func shouldBreakUndoGroup(previousText: String, currentText: String) -> Bool {
             guard currentText.count > previousText.count else { return false }
             guard currentText.hasPrefix(previousText) else { return false }
@@ -174,10 +182,10 @@ struct PlainTextView: NSViewRepresentable {
         private func insertText(_ content: String, into textView: NSTextView) {
             let selectedRange = textView.window?.firstResponder == textView
                 ? textView.selectedRange()
-                : NSRange(location: textView.string.utf16.count, length: 0)
+                : lastSelectedRange
 
             let range: NSRange
-            if selectedRange.location == NSNotFound {
+            if selectedRange.location == NSNotFound || NSMaxRange(selectedRange) > textView.string.utf16.count {
                 range = NSRange(location: textView.string.utf16.count, length: 0)
             } else {
                 range = selectedRange
