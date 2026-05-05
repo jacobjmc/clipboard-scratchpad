@@ -8,4 +8,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.accessory)
         statusBarController = StatusBarController(store: store)
     }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        store.stopClipboardMonitoring()
+    }
 }
