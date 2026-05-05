@@ -7,6 +7,7 @@ final class ScratchpadStore: ObservableObject {
     @Published var isCapturing: Bool = false
     @Published var persistenceWarning: String? = nil
     @Published var toolbarMessage: String? = nil
+    @Published var updatedAt: Date? = nil
 
     private let maxLength = 100_000
     private let saveInterval: TimeInterval = 0.4
@@ -69,6 +70,7 @@ final class ScratchpadStore: ObservableObject {
         newText += prefix + "\n" + content
 
         noteText = newText
+        updatedAt = Date()
         lastCapturedText = normalized
         saveImmediately()
 
@@ -97,10 +99,16 @@ final class ScratchpadStore: ObservableObject {
 
     func clear() {
         noteText = ""
+        updatedAt = Date()
         lastCapturedText = nil
         saveImmediately()
 
         NotificationCenter.default.post(name: .scratchpadClearText, object: nil)
+    }
+
+    func noteDidChange() {
+        updatedAt = Date()
+        scheduleSave()
     }
 
     // MARK: - Autosave
@@ -116,7 +124,7 @@ final class ScratchpadStore: ObservableObject {
 
     private func saveImmediately() {
         saveWorkItem?.cancel()
-        let state = StoreState(noteText: noteText)
+        let state = StoreState(noteText: noteText, updatedAt: updatedAt)
         do {
             let data = try JSONEncoder().encode(state)
             try data.write(to: storeURL)
@@ -133,6 +141,7 @@ final class ScratchpadStore: ObservableObject {
         if let data = try? Data(contentsOf: storeURL) {
             if let state = try? JSONDecoder().decode(StoreState.self, from: data) {
                 noteText = state.noteText
+                updatedAt = state.updatedAt
                 return
             }
             // Try old format
@@ -164,6 +173,7 @@ final class ScratchpadStore: ObservableObject {
         }
 
         noteText = parts.joined(separator: "\n\n")
+        updatedAt = Date()
 
         // Backup old file
         if let data = try? Data(contentsOf: storeURL) {

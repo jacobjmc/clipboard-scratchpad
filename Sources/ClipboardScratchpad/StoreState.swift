@@ -2,6 +2,12 @@ import Foundation
 
 struct StoreState: Codable {
     var noteText: String
+    var updatedAt: Date?
+
+    init(noteText: String, updatedAt: Date? = nil) {
+        self.noteText = noteText
+        self.updatedAt = updatedAt
+    }
 }
 
 // MARK: - Legacy migration types
