@@ -3,7 +3,7 @@ import AppKit
 
 extension Notification.Name {
     static let scratchpadPopoverDidShow = Notification.Name("scratchpadPopoverDidShow")
-    static let scratchpadAppendText = Notification.Name("scratchpadAppendText")
+    static let scratchpadInsertText = Notification.Name("scratchpadInsertText")
     static let scratchpadClearText = Notification.Name("scratchpadClearText")
 }
 
@@ -87,7 +87,7 @@ struct PlainTextView: NSViewRepresentable {
         var parent: PlainTextView
         weak var textView: NSTextView?
         private var focusObserver: NSObjectProtocol?
-        private var appendObserver: NSObjectProtocol?
+        private var insertObserver: NSObjectProtocol?
         private var clearObserver: NSObjectProtocol?
         private var undoBreakWorkItem: DispatchWorkItem?
         var lastSyncedText: String = ""
@@ -107,15 +107,14 @@ struct PlainTextView: NSViewRepresentable {
                 }
             }
 
-            appendObserver = NotificationCenter.default.addObserver(
-                forName: .scratchpadAppendText,
+            insertObserver = NotificationCenter.default.addObserver(
+                forName: .scratchpadInsertText,
                 object: nil,
                 queue: .main
             ) { [weak self] note in
                 guard let self = self, let textView = self.textView else { return }
-                guard let prefix = note.userInfo?["prefix"] as? String,
-                      let content = note.userInfo?["content"] as? String else { return }
-                self.insertCapture(prefix: prefix, content: content, into: textView)
+                guard let content = note.userInfo?["content"] as? String else { return }
+                self.insertText(content, into: textView)
             }
 
             clearObserver = NotificationCenter.default.addObserver(
@@ -132,7 +131,7 @@ struct PlainTextView: NSViewRepresentable {
             if let observer = focusObserver {
                 NotificationCenter.default.removeObserver(observer)
             }
-            if let observer = appendObserver {
+            if let observer = insertObserver {
                 NotificationCenter.default.removeObserver(observer)
             }
             if let observer = clearObserver {
@@ -172,25 +171,21 @@ struct PlainTextView: NSViewRepresentable {
             }
         }
 
-        private func insertCapture(prefix: String, content: String, into textView: NSTextView) {
-            let current = textView.string
-            var trimmed = current
-            while trimmed.hasSuffix("\n") {
-                trimmed.removeLast()
-            }
+        private func insertText(_ content: String, into textView: NSTextView) {
+            let selectedRange = textView.window?.firstResponder == textView
+                ? textView.selectedRange()
+                : NSRange(location: textView.string.utf16.count, length: 0)
 
-            let insertText: String
-            if trimmed.isEmpty {
-                insertText = prefix + "\n" + content
+            let range: NSRange
+            if selectedRange.location == NSNotFound {
+                range = NSRange(location: textView.string.utf16.count, length: 0)
             } else {
-                insertText = "\n\n" + prefix + "\n" + content
+                range = selectedRange
             }
 
-            let end = trimmed.utf16.count
-            let range = NSRange(location: end, length: 0)
-
-            if textView.shouldChangeText(in: range, replacementString: insertText) {
-                textView.textStorage?.replaceCharacters(in: range, with: insertText)
+            if textView.shouldChangeText(in: range, replacementString: content) {
+                textView.textStorage?.replaceCharacters(in: range, with: content)
+                textView.setSelectedRange(NSRange(location: range.location + content.utf16.count, length: 0))
                 textView.didChangeText()
                 textView.breakUndoCoalescing()
             }

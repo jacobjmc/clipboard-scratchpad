@@ -4,16 +4,17 @@ import AppKit
 
 final class ScratchpadStore: ObservableObject {
     @Published var noteText: String = ""
-    @Published var isCapturing: Bool = false
+    @Published var clips: [ClipShelfItem] = []
     @Published var persistenceWarning: String? = nil
     @Published var toolbarMessage: String? = nil
     @Published var updatedAt: Date? = nil
 
     private let maxLength = 100_000
+    private let maxClips = 50
     private let saveInterval: TimeInterval = 0.4
     private var saveWorkItem: DispatchWorkItem?
     private var toolbarMessageWorkItem: DispatchWorkItem?
-    private var lastCapturedText: String? = nil
+    private var lastCapturedClipText: String? = nil
     private let clipboardMonitor = ClipboardMonitor()
     private let storeURL: URL
     private let backupURL: URL
@@ -25,67 +26,57 @@ final class ScratchpadStore: ObservableObject {
         self.storeURL = dir.appendingPathComponent("store.json")
         self.backupURL = dir.appendingPathComponent("store.blocks.backup.json")
         load()
+        startClipboardMonitoring()
     }
 
-    // MARK: - Capture
+    // MARK: - Clipboard capture
 
-    func setCapturing(_ capturing: Bool) {
-        isCapturing = capturing
-        if capturing {
-            clipboardMonitor.start { [weak self] content, name, bundleID in
-                DispatchQueue.main.async {
-                    self?.handleCapture(content: content, appName: name)
-                }
+    private func startClipboardMonitoring() {
+        clipboardMonitor.start { [weak self] content, name, bundleID in
+            DispatchQueue.main.async {
+                self?.captureClipboardText(content, sourceAppName: name, sourceBundleID: bundleID)
             }
-        } else {
-            clipboardMonitor.stop()
         }
     }
 
-    private func handleCapture(content: String, appName: String?) {
+    func stopClipboardMonitoring() {
+        clipboardMonitor.stop()
+    }
+
+    func captureClipboardText(_ content: String, sourceAppName: String?, sourceBundleID: String?) {
         let normalized = content.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !normalized.isEmpty else { return }
-        guard normalized != lastCapturedText else { return }
+        guard normalized != lastCapturedClipText else { return }
 
-        if noteText.count >= maxLength {
-            showToolbarMessage("Note is full.")
-            return
+        let clip = ClipShelfItem(
+            id: UUID(),
+            content: content,
+            capturedAt: Date(),
+            sourceAppName: sourceAppName,
+            sourceBundleID: sourceBundleID
+        )
+
+        clips.insert(clip, at: 0)
+        if clips.count > maxClips {
+            clips.removeLast(clips.count - maxClips)
         }
 
-        let prefix: String
-        if let appName = appName, !appName.isEmpty {
-            prefix = "[\(formattedTime()) · \(appName)]"
-        } else {
-            prefix = "[\(formattedTime())]"
-        }
-
-        // Update noteText for when popover is closed (fallback)
-        var newText = noteText
-        while newText.hasSuffix("\n") {
-            newText.removeLast()
-        }
-        if !newText.isEmpty {
-            newText += "\n\n"
-        }
-        newText += prefix + "\n" + content
-
-        noteText = newText
-        updatedAt = Date()
-        lastCapturedText = normalized
+        lastCapturedClipText = normalized
         saveImmediately()
+    }
 
-        // Notify live text view for proper undo handling
+    func insertClip(_ clip: ClipShelfItem) {
         NotificationCenter.default.post(
-            name: .scratchpadAppendText,
+            name: .scratchpadInsertText,
             object: nil,
-            userInfo: ["prefix": prefix, "content": content]
+            userInfo: ["content": clip.content]
         )
     }
 
-    private func formattedTime() -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "h:mm a"
-        return formatter.string(from: Date())
+    func clearClips() {
+        clips = []
+        lastCapturedClipText = nil
+        saveImmediately()
     }
 
     // MARK: - Pasteboard
@@ -100,7 +91,7 @@ final class ScratchpadStore: ObservableObject {
     func clear() {
         noteText = ""
         updatedAt = Date()
-        lastCapturedText = nil
+        lastCapturedClipText = nil
         saveImmediately()
 
         NotificationCenter.default.post(name: .scratchpadClearText, object: nil)
@@ -124,7 +115,7 @@ final class ScratchpadStore: ObservableObject {
 
     private func saveImmediately() {
         saveWorkItem?.cancel()
-        let state = StoreState(noteText: noteText, updatedAt: updatedAt)
+        let state = StoreState(noteText: noteText, updatedAt: updatedAt, clips: clips)
         do {
             let data = try JSONEncoder().encode(state)
             try data.write(to: storeURL)
@@ -142,6 +133,8 @@ final class ScratchpadStore: ObservableObject {
             if let state = try? JSONDecoder().decode(StoreState.self, from: data) {
                 noteText = state.noteText
                 updatedAt = state.updatedAt
+                clips = state.clips
+                lastCapturedClipText = state.clips.first?.content.trimmingCharacters(in: .whitespacesAndNewlines)
                 return
             }
             // Try old format
@@ -151,6 +144,7 @@ final class ScratchpadStore: ObservableObject {
             }
         }
         noteText = ""
+        clips = []
     }
 
     private func migrate(legacyBlocks: [LegacyScratchBlock]) {
@@ -174,6 +168,7 @@ final class ScratchpadStore: ObservableObject {
 
         noteText = parts.joined(separator: "\n\n")
         updatedAt = Date()
+        clips = []
 
         // Backup old file
         if let data = try? Data(contentsOf: storeURL) {

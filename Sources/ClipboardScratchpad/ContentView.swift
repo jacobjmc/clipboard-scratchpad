@@ -3,6 +3,7 @@ import SwiftUI
 struct ContentView: View {
     @EnvironmentObject var store: ScratchpadStore
     @State private var showingClearAlert = false
+    @State private var isShowingClips = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -22,6 +23,15 @@ struct ContentView: View {
 
             Divider()
 
+            if isShowingClips {
+                ClipShelfDrawer(
+                    clips: store.clips,
+                    onInsert: { store.insertClip($0) },
+                    onClear: { store.clearClips() }
+                )
+                Divider()
+            }
+
             HStack(spacing: 12) {
                 ScratchpadMetaBar(text: store.noteText, updatedAt: store.updatedAt)
 
@@ -29,14 +39,24 @@ struct ContentView: View {
 
                 HStack(spacing: 16) {
                     Button {
-                        store.setCapturing(!store.isCapturing)
+                        isShowingClips.toggle()
                     } label: {
-                        Image(systemName: store.isCapturing ? "pause.fill" : "play.fill")
-                            .font(.body)
+                        HStack(spacing: 5) {
+                            Image(systemName: "tray.full")
+                                .font(.body)
+                            if !store.clips.isEmpty {
+                                Text("\(min(store.clips.count, 50))")
+                                    .font(.system(size: 9, weight: .semibold))
+                                    .padding(.horizontal, 4)
+                                    .padding(.vertical, 1)
+                                    .background(Capsule().fill(Color.secondary.opacity(0.18)))
+                            }
+                        }
                     }
                     .buttonStyle(.plain)
-                    .help(store.isCapturing ? "Pause Capturing" : "Start Capturing")
-                    .accessibilityLabel(store.isCapturing ? "Pause Capturing" : "Start Capturing")
+                    .foregroundColor(isShowingClips ? .primary : .secondary)
+                    .help("Clips")
+                    .accessibilityLabel("Clips")
 
                     Button {
                         store.copyAll()
@@ -82,6 +102,88 @@ struct ContentView: View {
         } message: {
             Text("This will remove all content. This cannot be undone.")
         }
+    }
+}
+
+private struct ClipShelfDrawer: View {
+    let clips: [ClipShelfItem]
+    let onInsert: (ClipShelfItem) -> Void
+    let onClear: () -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text("Clips")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(.secondary)
+                Spacer()
+                Button("Clear") {
+                    onClear()
+                }
+                .buttonStyle(.plain)
+                .font(.system(size: 11, weight: .medium))
+                .disabled(clips.isEmpty)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+
+            if clips.isEmpty {
+                Text("No clips")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 18)
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(clips) { clip in
+                            ClipShelfRow(clip: clip) {
+                                onInsert(clip)
+                            }
+                            Divider()
+                        }
+                    }
+                }
+                .frame(maxHeight: 180)
+            }
+        }
+        .background(Color(nsColor: .controlBackgroundColor).opacity(0.55))
+    }
+}
+
+private struct ClipShelfRow: View {
+    let clip: ClipShelfItem
+    let onInsert: () -> Void
+
+    var body: some View {
+        Button(action: onInsert) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(clip.content)
+                    .font(.system(size: 12))
+                    .foregroundColor(.primary)
+                    .lineLimit(2)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                Text(metadata)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var metadata: String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .abbreviated
+        let time = formatter.localizedString(for: clip.capturedAt, relativeTo: Date())
+        if let sourceAppName = clip.sourceAppName, !sourceAppName.isEmpty {
+            return "\(sourceAppName) · \(time)"
+        }
+        return time
     }
 }
 
