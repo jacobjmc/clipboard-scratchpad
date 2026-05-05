@@ -25,11 +25,13 @@ No hidden structured clip metadata is stored. Once captured text is appended to 
 
 Persistence: JSON via `Codable` to `~/Library/Application Support/ClipboardScratchpad/store.json` with a single `StoreState` struct containing `noteText`.
 
-The `ScratchBlock` enum and its associated types (`ManualBlock`, `CapturedBlock`) are deleted. The project convention requiring `ScratchBlock` is retired because a single plain-text document is the correct model for a sticky note.
+The `ScratchBlock` enum and its associated types (`ManualBlock`, `CapturedBlock`) are deleted from the live app model and UI. Legacy block types may remain in a migration-only file/namespace until migration is no longer needed. They must not be used by the live app model or UI.
 
 ### Clipboard Capture
 
 The monitor polls `NSPasteboard.changeCount` on the main thread.
+
+When capture is turned on, set the monitor's `lastSeenChangeCount` to `NSPasteboard.general.changeCount` before polling begins. This prevents the app from immediately capturing whatever was already on the clipboard before the user turned capture on.
 
 When a new clipboard string is detected:
 1. Ignore it if Clipboard Scratchpad is the frontmost app.
@@ -45,9 +47,9 @@ copied text
 
 If `AppName` is unavailable, use `[HH:MM AM/PM]` as the prefix.
 
-Captured clips always append to the end of `noteText`. Existing note text is not modified except for ensuring two newline characters before the appended clip. Do not strip spaces or tabs from existing user text.
+Captured clips always append to the end of `noteText`. When appending to a non-empty note, remove only trailing newline characters, then append exactly two newline characters before the new clip. Do not remove spaces, tabs, or other user-entered characters.
 
-After appending, update `lastCapturedText` with the normalized text and save.
+After appending, update `lastCapturedText` with the normalized text and save immediately.
 
 The `Copy All` button inside the app triggers a pasteboard write. Call `clipboardMonitor.noteExternalPasteboardWrite()` after writing to the pasteboard because the write changes `NSPasteboard.changeCount`.
 
@@ -57,16 +59,16 @@ Use SwiftUI `TextEditor` for the first implementation. If focus, scrolling, undo
 
 The single editable note area fills the popover. User types directly into the note.
 
-Toolbar row at bottom with icon buttons:
-- **Clipboard toggle** — `play.fill` / `pause.fill` to start/pause capture.
-- **Copy All** — `doc.on.doc` icon. Copies the entire `noteText` to pasteboard.
-- **Clear** — `trash` icon. Shows destructive confirmation alert.
+Toolbar row at bottom with icon buttons. Each icon button must have an accessibility label and tooltip:
+- **Clipboard toggle** — `play.fill` / `pause.fill`. Label: "Start Capturing" / "Pause Capturing".
+- **Copy All** — `doc.on.doc` icon. Label: "Copy All".
+- **Clear** — `trash` icon. Label: "Clear".
 
 Remove the separate text input + "Add Note" button. Remove "Convert" button and all conversion logic. Popover size stays 400×520. No explanatory copy or meta commentary inside the app UI.
 
 ### Block Row Cleanup
 
-Delete `BlockRow`, `ManualBlockRow`, `CapturedBlockRow` views. Delete `ScratchBlock`, `ManualBlock`, `CapturedBlock` model types. Delete `appendManual`, `deleteBlock`, `convertToManual` methods from `ScratchpadStore`.
+Delete `BlockRow`, `ManualBlockRow`, `CapturedBlockRow` views. Delete `ScratchBlock`, `ManualBlock`, `CapturedBlock` from the live model and UI. Keep legacy decode types in a migration-only file if needed.
 
 ### Migration
 
@@ -80,10 +82,14 @@ Delete `BlockRow`, `ManualBlockRow`, `CapturedBlockRow` views. Delete `ScratchBl
 5. Write the new `StoreState` to `store.json`.
 6. If migration fails, start with an empty note and log the error. Do not delete the old file before a successful new save.
 
+## Autosave
+
+Manual edits from the `TextEditor` are autosaved using a short debounce of 300–500ms after the last edit. Clipboard appends, Clear, and migration save immediately.
+
 ## Edge Cases
 
 - **Empty note on first launch** — show empty sticky note. No placeholder text inside the editor.
-- **Maximum length** — cap `noteText` at 100,000 characters. If a capture would exceed it, skip the append and show a small non-modal toolbar message: "Note is full."
+- **Maximum length** — cap `noteText` at 100,000 characters. If a capture would exceed it, skip the append and show a small non-modal toolbar message: "Note is full." If manual editing pushes `noteText` beyond 100,000 characters, allow the edit but show "Note is full" and prevent further clipboard captures until the note is reduced below the limit. Do not forcibly truncate what the user typed.
 - **User deletes timestamp prefix** — perfectly fine, it's just text now.
 - **User pastes the same text twice** — `lastCapturedText` dedup catches identical consecutive captures.
-- **noteText ends with whitespace/newlines** — when appending, remove only trailing newlines if needed, then insert exactly two newlines before the new clip. Do not strip spaces/tabs or otherwise mutate existing user text.
+- **noteText ends with whitespace/newlines** — when appending, remove only trailing newline characters, then insert exactly two newlines before the new clip. Do not strip spaces, tabs, or other user-entered characters.
