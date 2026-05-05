@@ -1,5 +1,7 @@
 # PRD: Clipboard Scratchpad
 
+> Note: this PRD is an early planning document and is no longer fully aligned with the current app. For current product and implementation context, read `CONTEXT.md` first.
+
 ## 1. Product overview
 
 ### 1.1 Document title and version

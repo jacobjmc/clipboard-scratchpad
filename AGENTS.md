@@ -24,3 +24,17 @@
 - Swift standard style. Explicit types over inference at module boundaries.
 - `private`/`fileprivate` by default, expand access only when needed.
 - Prefer value types (structs, enums) over classes where possible.
+
+## Agent skills
+
+### Issue tracker
+
+Issues are tracked as local markdown under `.scratch/<feature-slug>/`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Triage labels use the default five-role vocabulary. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+This repo uses a single-context domain-doc layout. See `docs/agents/domain.md`.
