@@ -142,14 +142,14 @@ final class ScratchpadStore: ObservableObject {
 
         for block in legacyBlocks {
             switch block {
-            case .manual(_, _, let content):
-                parts.append(content)
-            case .captured(_, let timestamp, let content, let sourceApp):
-                let time = formatter.string(from: timestamp)
-                if let app = sourceApp, !app.isEmpty {
-                    parts.append("[\(time) · \(app)]\n\(content)")
+            case .manual(let manual):
+                parts.append(manual.content)
+            case .captured(let captured):
+                let time = formatter.string(from: captured.timestamp)
+                if let app = captured.sourceAppName, !app.isEmpty {
+                    parts.append("[\(time) · \(app)]\n\(captured.content)")
                 } else {
-                    parts.append("[\(time)]\n\(content)")
+                    parts.append("[\(time)]\n\(captured.content)")
                 }
             }
         }
