@@ -58,8 +58,8 @@ final class ScratchpadStore: ObservableObject {
             prefix = "[\(formattedTime())]"
         }
 
+        // Update noteText for when popover is closed (fallback)
         var newText = noteText
-        // Remove only trailing newlines, not spaces/tabs
         while newText.hasSuffix("\n") {
             newText.removeLast()
         }
@@ -71,6 +71,13 @@ final class ScratchpadStore: ObservableObject {
         noteText = newText
         lastCapturedText = normalized
         saveImmediately()
+
+        // Notify live text view for proper undo handling
+        NotificationCenter.default.post(
+            name: .scratchpadAppendText,
+            object: nil,
+            userInfo: ["prefix": prefix, "content": content]
+        )
     }
 
     private func formattedTime() -> String {
@@ -92,6 +99,8 @@ final class ScratchpadStore: ObservableObject {
         noteText = ""
         lastCapturedText = nil
         saveImmediately()
+
+        NotificationCenter.default.post(name: .scratchpadClearText, object: nil)
     }
 
     // MARK: - Autosave
