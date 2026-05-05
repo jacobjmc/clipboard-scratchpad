@@ -46,10 +46,13 @@ struct PlainTextView: NSViewRepresentable {
         }
 
         if textView.string != text {
-            textView.undoManager?.disableUndoRegistration()
+            print("External text sync happened — undo history will be cleared")
+
+            let undoManager = textView.undoManager
+            undoManager?.disableUndoRegistration()
             textView.string = text
-            textView.undoManager?.enableUndoRegistration()
-            textView.undoManager?.removeAllActions()
+            undoManager?.enableUndoRegistration()
+            undoManager?.removeAllActions()
         }
     }
 
@@ -60,16 +63,15 @@ struct PlainTextView: NSViewRepresentable {
     final class Coordinator: NSObject, NSTextViewDelegate {
         var parent: PlainTextView
         weak var textView: NSTextView?
-        private let textUndoManager = UndoManager()
         private var focusObserver: NSObjectProtocol?
         private var appendObserver: NSObjectProtocol?
         private var clearObserver: NSObjectProtocol?
+        private var undoBreakWorkItem: DispatchWorkItem?
         var isProgrammaticChange = false
 
         init(_ parent: PlainTextView) {
             self.parent = parent
             super.init()
-            textUndoManager.levelsOfUndo = 100
 
             focusObserver = NotificationCenter.default.addObserver(
                 forName: .scratchpadPopoverDidShow,
@@ -115,15 +117,19 @@ struct PlainTextView: NSViewRepresentable {
             }
         }
 
-        func undoManager(for view: NSTextView) -> UndoManager? {
-            textUndoManager
-        }
-
         func textDidChange(_ notification: Notification) {
             isProgrammaticChange = false
             guard let textView = textView else { return }
+
             parent.text = textView.string
             parent.onTextChange()
+
+            undoBreakWorkItem?.cancel()
+            let workItem = DispatchWorkItem { [weak textView] in
+                textView?.breakUndoCoalescing()
+            }
+            undoBreakWorkItem = workItem
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8, execute: workItem)
         }
 
         private func insertCapture(prefix: String, content: String, into textView: NSTextView) {
@@ -167,28 +173,59 @@ struct PlainTextView: NSViewRepresentable {
 }
 
 final class PlainTextNSTextView: NSTextView {
+    private let localUndoManager = UndoManager()
+
+    convenience init() {
+        self.init(frame: .zero, textContainer: nil)
+    }
+
+    override init(frame frameRect: NSRect, textContainer container: NSTextContainer?) {
+        super.init(frame: frameRect, textContainer: container)
+        localUndoManager.levelsOfUndo = 100
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        localUndoManager.levelsOfUndo = 100
+    }
+
+    override var undoManager: UndoManager? {
+        localUndoManager
+    }
+
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
-        if event.modifierFlags.contains(.command),
-           let chars = event.charactersIgnoringModifiers {
-            switch chars.lowercased() {
-            case "a":
-                selectAll(nil)
-                return true
-            case "c":
-                copy(nil)
-                return true
-            case "v":
-                paste(nil)
-                breakUndoCoalescing()
-                return true
-            case "x":
-                cut(nil)
-                breakUndoCoalescing()
-                return true
-            default:
-                break
-            }
+        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+
+        guard flags.contains(.command),
+              let chars = event.charactersIgnoringModifiers?.lowercased()
+        else {
+            return super.performKeyEquivalent(with: event)
         }
-        return super.performKeyEquivalent(with: event)
+
+        switch chars {
+        case "a":
+            selectAll(nil)
+            return true
+        case "c":
+            copy(nil)
+            return true
+        case "v":
+            paste(nil)
+            breakUndoCoalescing()
+            return true
+        case "x":
+            cut(nil)
+            breakUndoCoalescing()
+            return true
+        case "z":
+            if flags.contains(.shift) {
+                undoManager?.redo()
+            } else {
+                undoManager?.undo()
+            }
+            return true
+        default:
+            return super.performKeyEquivalent(with: event)
+        }
     }
 }
