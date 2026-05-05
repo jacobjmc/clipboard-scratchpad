@@ -16,12 +16,34 @@ struct PlainTextView: NSViewRepresentable {
         scrollView.hasVerticalScroller = true
         scrollView.autohidesScrollers = true
         scrollView.autoresizingMask = [.width, .height]
+        scrollView.borderType = .noBorder
 
-        let textView = PlainTextNSTextView()
+        let contentSize = scrollView.contentSize
+        let textStorage = NSTextStorage()
+        let layoutManager = NSLayoutManager()
+        let textContainer = NSTextContainer(
+            containerSize: NSSize(width: contentSize.width, height: .greatestFiniteMagnitude)
+        )
+        textContainer.widthTracksTextView = true
+        textContainer.heightTracksTextView = false
+        layoutManager.addTextContainer(textContainer)
+        textStorage.addLayoutManager(layoutManager)
+
+        let textView = PlainTextNSTextView(
+            frame: NSRect(origin: .zero, size: contentSize),
+            textContainer: textContainer
+        )
         textView.isRichText = false
         textView.allowsUndo = true
         textView.isEditable = true
         textView.isSelectable = true
+        textView.isHorizontallyResizable = false
+        textView.isVerticallyResizable = true
+        textView.minSize = NSSize(width: 0, height: contentSize.height)
+        textView.maxSize = NSSize(
+            width: CGFloat.greatestFiniteMagnitude,
+            height: CGFloat.greatestFiniteMagnitude
+        )
         textView.font = NSFont.systemFont(ofSize: NSFont.systemFontSize)
         textView.textContainerInset = NSSize(width: 8, height: 8)
         textView.autoresizingMask = [.width, .height]
@@ -121,16 +143,33 @@ struct PlainTextView: NSViewRepresentable {
         func textDidChange(_ notification: Notification) {
             guard let textView = textView else { return }
 
+            let previousText = lastSyncedText
+            let currentText = textView.string
             lastSyncedText = textView.string
-            parent.text = textView.string
+            parent.text = currentText
             parent.onTextChange()
 
             undoBreakWorkItem?.cancel()
+            if shouldBreakUndoGroup(previousText: previousText, currentText: currentText) {
+                textView.breakUndoCoalescing()
+                return
+            }
+
             let workItem = DispatchWorkItem { [weak textView] in
                 textView?.breakUndoCoalescing()
             }
             undoBreakWorkItem = workItem
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8, execute: workItem)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35, execute: workItem)
+        }
+
+        private func shouldBreakUndoGroup(previousText: String, currentText: String) -> Bool {
+            guard currentText.count > previousText.count else { return false }
+            guard currentText.hasPrefix(previousText) else { return false }
+
+            let insertedText = String(currentText.dropFirst(previousText.count))
+            return insertedText.contains { character in
+                character.isWhitespace || ".!?;:".contains(character)
+            }
         }
 
         private func insertCapture(prefix: String, content: String, into textView: NSTextView) {

@@ -38,6 +38,8 @@ final class StatusBarController {
     func showPopover(_ sender: AnyObject?) {
         if let button = statusItem.button {
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: NSRectEdge.minY)
+            NSApp.activate(ignoringOtherApps: true)
+            popover.contentViewController?.view.window?.makeKey()
             NotificationCenter.default.post(name: .scratchpadPopoverDidShow, object: nil)
             eventMonitor?.start()
         }
