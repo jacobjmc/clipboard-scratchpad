@@ -16,12 +16,9 @@ struct ContentView: View {
                     .background(Color.orange.opacity(0.1))
             }
 
-            TextEditor(text: $store.noteText)
-                .font(.body)
-                .padding(4)
-                .onChange(of: store.noteText) { _, _ in
-                    store.scheduleSave()
-                }
+            PlainTextView(text: $store.noteText) {
+                store.scheduleSave()
+            }
 
             Divider()
 
