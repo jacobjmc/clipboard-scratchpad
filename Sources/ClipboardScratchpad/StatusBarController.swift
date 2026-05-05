@@ -8,7 +8,7 @@ final class StatusBarController {
 
     init(store: ScratchpadStore) {
         popover = NSPopover()
-        popover.contentSize = NSSize(width: 400, height: 520)
+        popover.contentSize = NSSize(width: 440, height: 520)
         popover.behavior = .transient
         popover.contentViewController = NSHostingController(
             rootView: ContentView().environmentObject(store)
