@@ -8,6 +8,13 @@ final class ScratchpadStore: ObservableObject {
     @Published var persistenceWarning: String? = nil
     @Published var toolbarMessage: String? = nil
     @Published var updatedAt: Date? = nil
+    @Published var isPinned: Bool = false {
+        didSet {
+            if isPinned != oldValue {
+                NotificationCenter.default.post(name: .scratchpadPinChanged, object: isPinned)
+            }
+        }
+    }
 
     private let maxLength = 100_000
     private let maxClips = 50

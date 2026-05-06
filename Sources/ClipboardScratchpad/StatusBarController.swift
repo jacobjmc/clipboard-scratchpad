@@ -2,13 +2,18 @@ import AppKit
 import SwiftUI
 
 final class StatusBarController {
+    private static let contentSize = NSSize(width: 440, height: 520)
+
     private let statusItem: NSStatusItem
     private let popover: NSPopover
+    private let store: ScratchpadStore
     private var eventMonitor: EventMonitor?
 
     init(store: ScratchpadStore) {
+        self.store = store
+
         popover = NSPopover()
-        popover.contentSize = NSSize(width: 440, height: 520)
+        popover.contentSize = Self.contentSize
         popover.behavior = .transient
         popover.contentViewController = NSHostingController(
             rootView: ContentView().environmentObject(store)
@@ -37,6 +42,7 @@ final class StatusBarController {
     @objc private func pinChanged(_ notification: Notification) {
         guard let pinned = notification.object as? Bool else { return }
         popover.behavior = pinned ? .applicationDefined : .transient
+        applyPopoverLevel()
         if pinned {
             eventMonitor?.stop()
         } else {
@@ -46,7 +52,7 @@ final class StatusBarController {
         }
     }
 
-    @objc func togglePopover(_ sender: AnyObject?) {
+    @objc private func togglePopover(_ sender: AnyObject?) {
         if popover.isShown {
             closePopover(sender)
         } else {
@@ -58,15 +64,22 @@ final class StatusBarController {
         if let button = statusItem.button {
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: NSRectEdge.minY)
             NSApp.activate(ignoringOtherApps: true)
+            applyPopoverLevel()
             popover.contentViewController?.view.window?.makeKey()
             NotificationCenter.default.post(name: .scratchpadPopoverDidShow, object: nil)
-            eventMonitor?.start()
+            if !store.isPinned {
+                eventMonitor?.start()
+            }
         }
     }
 
     func closePopover(_ sender: AnyObject?) {
         popover.performClose(sender)
         eventMonitor?.stop()
+    }
+
+    private func applyPopoverLevel() {
+        popover.contentViewController?.view.window?.level = store.isPinned ? .floating : .normal
     }
 }
 

@@ -4,7 +4,6 @@ struct ContentView: View {
     @EnvironmentObject var store: ScratchpadStore
     @State private var showingClearAlert = false
     @State private var isShowingClips = false
-    @State private var isPinned = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -23,14 +22,13 @@ struct ContentView: View {
 
                 HStack(spacing: 16) {
                     Button {
-                        isPinned.toggle()
-                        NotificationCenter.default.post(name: .scratchpadPinChanged, object: isPinned)
+                        store.isPinned.toggle()
                     } label: {
-                        Image(systemName: isPinned ? "pin.fill" : "pin")
+                        Image(systemName: store.isPinned ? "pin.fill" : "pin")
                             .font(.body)
                     }
                     .buttonStyle(.plain)
-                    .foregroundColor(isPinned ? .primary : .secondary)
+                    .foregroundColor(store.isPinned ? .primary : .secondary)
                     .help("Pin window")
                     .accessibilityLabel("Pin window")
 
