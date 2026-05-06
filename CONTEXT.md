@@ -17,6 +17,7 @@ The product should stay local-first, fast, and single-purpose. It should not bec
 - Clipboard polling via `NSPasteboard.changeCount`.
 - Recent clip shelf with captured text, source app metadata, capture time, and a cap of 50 clips.
 - Clicking a clip inserts it into the scratchpad at the current or last known cursor position.
+- Clip rows can expose explicit secondary actions: paste the clip into the previously focused external app, or copy the clip to the clipboard only.
 - Copy-all writes the scratchpad text to the clipboard.
 - Clear removes the scratchpad after confirmation.
 - The popover can be pinned so it stays open.
@@ -36,6 +37,11 @@ The product should stay local-first, fast, and single-purpose. It should not bec
 ## Important Product Decisions
 
 - Current v1 is not a block-based document editor. Captured clips live in a shelf and become plain text when inserted.
+- Because the Clip Shelf belongs to the scratchpad UI, plain clip clicks insert into the scratchpad even when the popover is pinned above other apps. Pasting into another app must be an explicit secondary action.
+- The paste-to-previous-app action is available whenever clips are shown, not only when the popover is pinned. If no previous external app is known, the action should fall back to copying the clip.
+- If Accessibility permission is unavailable, paste-to-previous-app should copy the clip and show `Copied` until permission is granted.
+- If the previous external app is gone or cannot be activated, paste-to-previous-app should copy the clip and show `Copied`.
+- Paste-to-previous-app uses the system pasteboard as transport, marks the write as app-owned so it is not recaptured, focuses the previous external app, and sends Cmd+V. The clip remains on the system clipboard afterward.
 - The scratchpad itself is plain text. Preserve normal text editing behavior and undo expectations.
 - Captured clipboard data should remain local.
 - Capture behavior should feel obvious and controllable before the app is treated as launch-ready.
@@ -43,7 +49,9 @@ The product should stay local-first, fast, and single-purpose. It should not bec
 ## Known Gaps And Open Decisions
 
 - Capture currently starts automatically on launch. Decide whether v1 should add explicit start/pause control before shipping.
-- Settings button exists in the UI but does not yet open settings.
+- Settings button opens a small settings surface.
+- Accessibility permission should be requested during onboarding, with a later in-app path to allow or repair it if the user skips onboarding or denies permission.
+- The settings surface is the recovery path for Accessibility permission after onboarding, including permission status and an action to enable or repair access.
 - Global hotkey is not implemented.
 - Launch at login is not implemented.
 - Excluded apps and clear-on-quit privacy controls are not implemented.

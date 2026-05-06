@@ -1,6 +1,7 @@
 import Foundation
 import Combine
 import AppKit
+import ApplicationServices
 
 final class ScratchpadStore: ObservableObject {
     @Published var noteText: String = ""
@@ -8,6 +9,7 @@ final class ScratchpadStore: ObservableObject {
     @Published var persistenceWarning: String? = nil
     @Published var toolbarMessage: String? = nil
     @Published var updatedAt: Date? = nil
+    @Published var isAccessibilityTrusted: Bool = AXIsProcessTrusted()
     @Published var isPinned: Bool = false {
         didSet {
             if isPinned != oldValue {
@@ -22,6 +24,7 @@ final class ScratchpadStore: ObservableObject {
     private var saveWorkItem: DispatchWorkItem?
     private var toolbarMessageWorkItem: DispatchWorkItem?
     private var lastCapturedClipText: String? = nil
+    private var lastExternalApplication: NSRunningApplication?
     private let clipboardMonitor = ClipboardMonitor()
     private let storeURL: URL
     private let backupURL: URL
@@ -80,6 +83,42 @@ final class ScratchpadStore: ObservableObject {
         )
     }
 
+    func copyClip(_ clip: ClipShelfItem) {
+        writeToPasteboard(clip.content)
+        showToolbarMessage("Copied")
+    }
+
+    func pasteClipToPreviousApp(_ clip: ClipShelfItem) {
+        writeToPasteboard(clip.content)
+        showToolbarMessage("Copied")
+
+        guard AXIsProcessTrusted(),
+              let application = lastExternalApplication,
+              !application.isTerminated,
+              application.activate() else {
+            return
+        }
+
+        let processIdentifier = application.processIdentifier
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+            self.sendPasteShortcut(to: processIdentifier)
+        }
+    }
+
+    func recordExternalApplication(_ application: NSRunningApplication) {
+        guard application.bundleIdentifier != Bundle.main.bundleIdentifier else { return }
+        lastExternalApplication = application
+    }
+
+    func refreshAccessibilityStatus() {
+        isAccessibilityTrusted = AXIsProcessTrusted()
+    }
+
+    func requestAccessibilityPermission() {
+        let options = [kAXTrustedCheckOptionPrompt.takeRetainedValue() as String: true] as CFDictionary
+        isAccessibilityTrusted = AXIsProcessTrustedWithOptions(options)
+    }
+
     func clearClips() {
         clips = []
         lastCapturedClipText = nil
@@ -89,10 +128,7 @@ final class ScratchpadStore: ObservableObject {
     // MARK: - Pasteboard
 
     func copyAll() {
-        let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
-        pasteboard.setString(noteText, forType: .string)
-        clipboardMonitor.noteExternalPasteboardWrite()
+        writeToPasteboard(noteText)
     }
 
     func clear() {
@@ -194,5 +230,22 @@ final class ScratchpadStore: ObservableObject {
         }
         toolbarMessageWorkItem = workItem
         DispatchQueue.main.asyncAfter(deadline: .now() + 2, execute: workItem)
+    }
+
+    private func writeToPasteboard(_ text: String) {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(text, forType: .string)
+        clipboardMonitor.noteExternalPasteboardWrite()
+    }
+
+    private func sendPasteShortcut(to processIdentifier: pid_t) {
+        let source = CGEventSource(stateID: .hidSystemState)
+        let keyDown = CGEvent(keyboardEventSource: source, virtualKey: 9, keyDown: true)
+        let keyUp = CGEvent(keyboardEventSource: source, virtualKey: 9, keyDown: false)
+        keyDown?.flags = .maskCommand
+        keyUp?.flags = .maskCommand
+        keyDown?.postToPid(processIdentifier)
+        keyUp?.postToPid(processIdentifier)
     }
 }

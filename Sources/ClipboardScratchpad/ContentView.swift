@@ -4,6 +4,7 @@ struct ContentView: View {
     @EnvironmentObject var store: ScratchpadStore
     @State private var showingClearAlert = false
     @State private var isShowingClips = false
+    @State private var isShowingSettings = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -33,6 +34,8 @@ struct ContentView: View {
                     .accessibilityLabel("Pin window")
 
                     Button {
+                        store.refreshAccessibilityStatus()
+                        isShowingSettings = true
                     } label: {
                         Image(systemName: "gearshape")
                             .font(.body)
@@ -40,6 +43,10 @@ struct ContentView: View {
                     .buttonStyle(.plain)
                     .help("Settings")
                     .accessibilityLabel("Settings")
+                    .popover(isPresented: $isShowingSettings, arrowEdge: .top) {
+                        SettingsView()
+                            .environmentObject(store)
+                    }
                 }
             }
             .padding(.horizontal, 14)
@@ -55,6 +62,8 @@ struct ContentView: View {
                 ClipShelfDrawer(
                     clips: store.clips,
                     onInsert: { store.insertClip($0) },
+                    onPaste: { store.pasteClipToPreviousApp($0) },
+                    onCopy: { store.copyClip($0) },
                     onClear: { store.clearClips() }
                 )
                 Divider()
@@ -133,9 +142,67 @@ struct ContentView: View {
     }
 }
 
+private struct SettingsView: View {
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var store: ScratchpadStore
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Text("Settings")
+                    .font(.system(size: 16, weight: .semibold))
+                Spacer()
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                .buttonStyle(.borderless)
+                .help("Close")
+                .accessibilityLabel("Close settings")
+            }
+
+            Divider()
+
+            HStack(alignment: .center, spacing: 12) {
+                Image(systemName: store.isAccessibilityTrusted ? "checkmark.circle.fill" : "exclamationmark.circle")
+                    .foregroundColor(store.isAccessibilityTrusted ? .green : .secondary)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Accessibility")
+                        .font(.system(size: 13, weight: .semibold))
+                    Text(store.isAccessibilityTrusted ? "Enabled" : "Required for paste actions")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+
+                Spacer()
+
+                Button(store.isAccessibilityTrusted ? "Refresh" : "Enable") {
+                    if store.isAccessibilityTrusted {
+                        store.refreshAccessibilityStatus()
+                    } else {
+                        store.requestAccessibilityPermission()
+                    }
+                }
+                .controlSize(.small)
+            }
+        }
+        .padding(18)
+        .frame(width: 360)
+        .presentationCompactAdaptation(.popover)
+        .onAppear {
+            store.refreshAccessibilityStatus()
+        }
+    }
+}
+
 private struct ClipShelfDrawer: View {
     let clips: [ClipShelfItem]
     let onInsert: (ClipShelfItem) -> Void
+    let onPaste: (ClipShelfItem) -> Void
+    let onCopy: (ClipShelfItem) -> Void
     let onClear: () -> Void
 
     var body: some View {
@@ -165,9 +232,12 @@ private struct ClipShelfDrawer: View {
                 ScrollView {
                     LazyVStack(spacing: 0) {
                         ForEach(clips) { clip in
-                            ClipShelfRow(clip: clip) {
-                                onInsert(clip)
-                            }
+                            ClipShelfRow(
+                                clip: clip,
+                                onInsert: { onInsert(clip) },
+                                onPaste: { onPaste(clip) },
+                                onCopy: { onCopy(clip) }
+                            )
                             Divider()
                         }
                     }
@@ -182,9 +252,11 @@ private struct ClipShelfDrawer: View {
 private struct ClipShelfRow: View {
     let clip: ClipShelfItem
     let onInsert: () -> Void
+    let onPaste: () -> Void
+    let onCopy: () -> Void
 
     var body: some View {
-        Button(action: onInsert) {
+        HStack(spacing: 10) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(clip.content)
                     .font(.system(size: 12))
@@ -197,11 +269,33 @@ private struct ClipShelfRow: View {
                     .foregroundColor(.secondary)
                     .lineLimit(1)
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 8)
             .contentShape(Rectangle())
+            .onTapGesture(perform: onInsert)
+
+            Button(action: onPaste) {
+                Image(systemName: "arrowshape.turn.up.right")
+                    .font(.system(size: 12, weight: .medium))
+                    .frame(width: 30, height: 30)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.borderless)
+            .foregroundColor(.secondary)
+            .help("Paste to previous app")
+            .accessibilityLabel("Paste to previous app")
+
+            Button(action: onCopy) {
+                Image(systemName: "doc.on.doc")
+                    .font(.system(size: 12, weight: .medium))
+                    .frame(width: 30, height: 30)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.borderless)
+            .foregroundColor(.secondary)
+            .help("Copy clip")
+            .accessibilityLabel("Copy clip")
         }
-        .buttonStyle(.plain)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
     }
 
     private var metadata: String {

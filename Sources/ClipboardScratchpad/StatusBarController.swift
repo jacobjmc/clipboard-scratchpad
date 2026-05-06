@@ -8,6 +8,7 @@ final class StatusBarController {
     private let popover: NSPopover
     private let store: ScratchpadStore
     private var eventMonitor: EventMonitor?
+    private var activationObserver: NSObjectProtocol?
 
     init(store: ScratchpadStore) {
         self.store = store
@@ -37,6 +38,21 @@ final class StatusBarController {
             name: .scratchpadPinChanged,
             object: nil
         )
+
+        activationObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didActivateApplicationNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard let application = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication else { return }
+            self?.store.recordExternalApplication(application)
+        }
+    }
+
+    deinit {
+        if let activationObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(activationObserver)
+        }
     }
 
     @objc private func pinChanged(_ notification: Notification) {
