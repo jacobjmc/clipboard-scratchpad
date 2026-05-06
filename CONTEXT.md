@@ -16,8 +16,8 @@ The product should stay local-first, fast, and single-purpose. It should not bec
 - Plain text editor backed by `NSTextView`.
 - Clipboard polling via `NSPasteboard.changeCount`.
 - Recent clip shelf with captured text, source app metadata, capture time, and a cap of 50 clips.
-- Clicking a clip inserts it into the scratchpad at the current or last known cursor position.
-- Clip rows can expose explicit secondary actions: paste the clip into the previously focused external app, or copy the clip to the clipboard only.
+- Clicking a clip opens a clip action menu.
+- The clip action menu includes paste to the previously focused external app, copy to clipboard, paste to note, and delete entry. The note action is labeled `Paste to Note`.
 - Copy-all writes the scratchpad text to the clipboard.
 - Clear removes the scratchpad after confirmation.
 - The popover can be pinned so it stays open.
@@ -37,10 +37,12 @@ The product should stay local-first, fast, and single-purpose. It should not bec
 ## Important Product Decisions
 
 - Current v1 is not a block-based document editor. Captured clips live in a shelf and become plain text when inserted.
-- Because the Clip Shelf belongs to the scratchpad UI, plain clip clicks insert into the scratchpad even when the popover is pinned above other apps. Pasting into another app must be an explicit secondary action.
+- Because a pinned note can make the clip destination ambiguous, plain clip clicks open an explicit action menu instead of inserting directly.
 - The paste-to-previous-app action is available whenever clips are shown, not only when the popover is pinned. If no previous external app is known, the action should fall back to copying the clip.
+- If no previous external app is known, the paste-to-previous-app action is disabled in the clip action menu.
 - If Accessibility permission is unavailable, paste-to-previous-app should copy the clip and show `Copied` until permission is granted.
 - If the previous external app is gone or cannot be activated, paste-to-previous-app should copy the clip and show `Copied`.
+- Delete entry removes a single clip immediately without confirmation and persists the shelf.
 - Paste-to-previous-app uses the system pasteboard as transport, marks the write as app-owned so it is not recaptured, focuses the previous external app, and sends Cmd+V. The clip remains on the system clipboard afterward.
 - The scratchpad itself is plain text. Preserve normal text editing behavior and undo expectations.
 - Captured clipboard data should remain local.

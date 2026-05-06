@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct ContentView: View {
@@ -65,9 +66,13 @@ struct ContentView: View {
             if isShowingClips {
                 ClipShelfDrawer(
                     clips: store.clips,
+                    previousAppName: store.previousExternalAppName,
+                    previousAppIcon: store.previousExternalAppIcon,
+                    canPasteToPreviousApp: store.hasPreviousExternalApplication,
                     onInsert: { store.insertClip($0) },
                     onPaste: { store.pasteClipToPreviousApp($0) },
                     onCopy: { store.copyClip($0) },
+                    onDelete: { store.deleteClip($0) },
                     onClear: { store.clearClips() }
                 )
                 Divider()
@@ -212,9 +217,13 @@ private struct SettingsView: View {
 
 private struct ClipShelfDrawer: View {
     let clips: [ClipShelfItem]
+    let previousAppName: String?
+    let previousAppIcon: NSImage?
+    let canPasteToPreviousApp: Bool
     let onInsert: (ClipShelfItem) -> Void
     let onPaste: (ClipShelfItem) -> Void
     let onCopy: (ClipShelfItem) -> Void
+    let onDelete: (ClipShelfItem) -> Void
     let onClear: () -> Void
 
     var body: some View {
@@ -246,9 +255,13 @@ private struct ClipShelfDrawer: View {
                         ForEach(clips) { clip in
                             ClipShelfRow(
                                 clip: clip,
+                                previousAppName: previousAppName,
+                                previousAppIcon: previousAppIcon,
+                                canPasteToPreviousApp: canPasteToPreviousApp,
                                 onInsert: { onInsert(clip) },
                                 onPaste: { onPaste(clip) },
-                                onCopy: { onCopy(clip) }
+                                onCopy: { onCopy(clip) },
+                                onDelete: { onDelete(clip) }
                             )
                             Divider()
                         }
@@ -263,51 +276,58 @@ private struct ClipShelfDrawer: View {
 
 private struct ClipShelfRow: View {
     let clip: ClipShelfItem
+    let previousAppName: String?
+    let previousAppIcon: NSImage?
+    let canPasteToPreviousApp: Bool
     let onInsert: () -> Void
     let onPaste: () -> Void
     let onCopy: () -> Void
+    let onDelete: () -> Void
 
     var body: some View {
-        HStack(spacing: 10) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(clip.content)
-                    .font(.system(size: 12))
-                    .foregroundColor(.primary)
-                    .lineLimit(2)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+        VStack(alignment: .leading, spacing: 4) {
+            Text(clip.content)
+                .font(.system(size: 12))
+                .foregroundColor(.primary)
+                .lineLimit(2)
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-                Text(metadata)
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundColor(.secondary)
-                    .lineLimit(1)
-            }
-            .contentShape(Rectangle())
-            .onTapGesture(perform: onInsert)
-
-            Button(action: onPaste) {
-                Image(systemName: "arrowshape.turn.up.right")
-                    .font(.system(size: 12, weight: .medium))
-                    .frame(width: 30, height: 30)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.borderless)
-            .foregroundColor(.secondary)
-            .help("Paste to previous app")
-            .accessibilityLabel("Paste to previous app")
-
-            Button(action: onCopy) {
-                Image(systemName: "doc.on.doc")
-                    .font(.system(size: 12, weight: .medium))
-                    .frame(width: 30, height: 30)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.borderless)
-            .foregroundColor(.secondary)
-            .help("Copy clip")
-            .accessibilityLabel("Copy clip")
+            Text(metadata)
+                .font(.system(size: 10, weight: .medium))
+                .foregroundColor(.secondary)
+                .lineLimit(1)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            showActionMenu()
+        }
+    }
+
+    private func showActionMenu() {
+        guard let event = NSApp.currentEvent else { return }
+
+        let menu = NSMenu()
+        menu.addActionItem(
+            title: pasteTitle,
+            image: previousAppIcon,
+            isEnabled: canPasteToPreviousApp,
+            action: onPaste
+        )
+        menu.addActionItem(title: "Copy to Clipboard", systemSymbolName: "doc.on.doc", action: onCopy)
+        menu.addActionItem(title: "Paste to Note", systemSymbolName: "note.text", action: onInsert)
+        menu.addItem(.separator())
+        menu.addActionItem(title: "Delete Entry", systemSymbolName: "trash", isDestructive: true, action: onDelete)
+
+        NSMenu.popUpContextMenu(menu, with: event, for: event.window?.contentView ?? NSView())
+    }
+
+    private var pasteTitle: String {
+        if let previousAppName, !previousAppName.isEmpty {
+            return "Paste to \(previousAppName)"
+        }
+        return "Paste to Previous App"
     }
 
     private var metadata: String {
@@ -318,6 +338,50 @@ private struct ClipShelfRow: View {
             return "\(sourceAppName) · \(time)"
         }
         return time
+    }
+}
+
+private final class MenuAction: NSObject {
+    private let action: () -> Void
+
+    init(_ action: @escaping () -> Void) {
+        self.action = action
+    }
+
+    @objc func runMenuAction() {
+        action()
+    }
+}
+
+private extension NSMenu {
+    func addActionItem(
+        title: String,
+        image: NSImage? = nil,
+        systemSymbolName: String? = nil,
+        isEnabled: Bool = true,
+        isDestructive: Bool = false,
+        action: @escaping () -> Void
+    ) {
+        let menuAction = MenuAction(action)
+        let item = NSMenuItem(title: title, action: #selector(MenuAction.runMenuAction), keyEquivalent: "")
+        item.target = menuAction
+        item.representedObject = menuAction
+        item.isEnabled = isEnabled
+        if let image {
+            image.size = NSSize(width: 16, height: 16)
+            item.image = image
+        } else if let systemSymbolName {
+            item.image = NSImage(systemSymbolName: systemSymbolName, accessibilityDescription: title)
+        }
+
+        if isDestructive {
+            item.attributedTitle = NSAttributedString(
+                string: title,
+                attributes: [.foregroundColor: NSColor.systemRed]
+            )
+        }
+
+        addItem(item)
     }
 }
 

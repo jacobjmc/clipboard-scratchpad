@@ -29,6 +29,21 @@ final class ScratchpadStore: ObservableObject {
     private let storeURL: URL
     private let backupURL: URL
 
+    var previousExternalAppName: String? {
+        guard let application = lastExternalApplication, !application.isTerminated else { return nil }
+        return application.localizedName
+    }
+
+    var previousExternalAppIcon: NSImage? {
+        guard let application = lastExternalApplication, !application.isTerminated else { return nil }
+        return application.icon
+    }
+
+    var hasPreviousExternalApplication: Bool {
+        guard let application = lastExternalApplication else { return false }
+        return !application.isTerminated
+    }
+
     init() {
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
             .appendingPathComponent("ClipboardScratchpad", isDirectory: true)
@@ -108,6 +123,12 @@ final class ScratchpadStore: ObservableObject {
     func recordExternalApplication(_ application: NSRunningApplication) {
         guard application.bundleIdentifier != Bundle.main.bundleIdentifier else { return }
         lastExternalApplication = application
+    }
+
+    func deleteClip(_ clip: ClipShelfItem) {
+        clips.removeAll { $0.id == clip.id }
+        lastCapturedClipText = clips.first?.content.trimmingCharacters(in: .whitespacesAndNewlines)
+        saveImmediately()
     }
 
     func refreshAccessibilityStatus() {
