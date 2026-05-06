@@ -7,7 +7,7 @@ final class ScratchpadStore: ObservableObject {
     @Published var noteText: String = ""
     @Published var clips: [ClipShelfItem] = []
     @Published var persistenceWarning: String? = nil
-    @Published var toolbarMessage: String? = nil
+    @Published var clipFeedback: (clipID: UUID, message: String)? = nil
     @Published var updatedAt: Date? = nil
     @Published var isAccessibilityTrusted: Bool = AXIsProcessTrusted()
     @Published var isPinned: Bool = false {
@@ -22,7 +22,7 @@ final class ScratchpadStore: ObservableObject {
     private let maxClips = 50
     private let saveInterval: TimeInterval = 0.4
     private var saveWorkItem: DispatchWorkItem?
-    private var toolbarMessageWorkItem: DispatchWorkItem?
+    private var clipFeedbackWorkItem: DispatchWorkItem?
     private var lastCapturedClipText: String? = nil
     private var lastExternalApplication: NSRunningApplication?
     private let clipboardMonitor = ClipboardMonitor()
@@ -100,12 +100,12 @@ final class ScratchpadStore: ObservableObject {
 
     func copyClip(_ clip: ClipShelfItem) {
         writeToPasteboard(clip.content)
-        showToolbarMessage("Copied")
+        showClipFeedback("Copied", for: clip)
     }
 
     func pasteClipToPreviousApp(_ clip: ClipShelfItem) {
         writeToPasteboard(clip.content)
-        showToolbarMessage("Copied")
+        showClipFeedback("Copied", for: clip)
 
         guard AXIsProcessTrusted(),
               let application = lastExternalApplication,
@@ -241,16 +241,17 @@ final class ScratchpadStore: ObservableObject {
         saveImmediately()
     }
 
-    // MARK: - Toolbar message
+    // MARK: - Clip feedback
 
-    private func showToolbarMessage(_ message: String) {
-        toolbarMessage = message
-        toolbarMessageWorkItem?.cancel()
+    private func showClipFeedback(_ message: String, for clip: ClipShelfItem) {
+        clipFeedback = (clip.id, message)
+        clipFeedbackWorkItem?.cancel()
         let workItem = DispatchWorkItem { [weak self] in
-            self?.toolbarMessage = nil
+            guard self?.clipFeedback?.clipID == clip.id else { return }
+            self?.clipFeedback = nil
         }
-        toolbarMessageWorkItem = workItem
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2, execute: workItem)
+        clipFeedbackWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.4, execute: workItem)
     }
 
     private func writeToPasteboard(_ text: String) {

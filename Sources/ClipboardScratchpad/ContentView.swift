@@ -69,11 +69,13 @@ struct ContentView: View {
                     previousAppName: store.previousExternalAppName,
                     previousAppIcon: store.previousExternalAppIcon,
                     canPasteToPreviousApp: store.hasPreviousExternalApplication,
+                    feedback: store.clipFeedback,
                     onInsert: { store.insertClip($0) },
                     onPaste: { store.pasteClipToPreviousApp($0) },
                     onCopy: { store.copyClip($0) },
                     onDelete: { store.deleteClip($0) },
-                    onClear: { store.clearClips() }
+                    onClear: { store.clearClips() },
+                    onCollapse: { isShowingClips = false }
                 )
                 Divider()
             }
@@ -138,13 +140,6 @@ struct ContentView: View {
             .padding(.horizontal, 14)
             .frame(height: 32)
 
-            if let message = store.toolbarMessage {
-                Text(message)
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
-                    .padding(.bottom, 4)
-                    .transition(.opacity)
-            }
         }
         .alert("Clear Scratchpad?", isPresented: $showingClearAlert) {
             Button("Cancel", role: .cancel) { }
@@ -220,11 +215,13 @@ private struct ClipShelfDrawer: View {
     let previousAppName: String?
     let previousAppIcon: NSImage?
     let canPasteToPreviousApp: Bool
+    let feedback: (clipID: UUID, message: String)?
     let onInsert: (ClipShelfItem) -> Void
     let onPaste: (ClipShelfItem) -> Void
     let onCopy: (ClipShelfItem) -> Void
     let onDelete: (ClipShelfItem) -> Void
     let onClear: () -> Void
+    let onCollapse: () -> Void
 
     var body: some View {
         VStack(spacing: 0) {
@@ -232,7 +229,22 @@ private struct ClipShelfDrawer: View {
                 Text("Clips")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundColor(.secondary)
+
+                Button {
+                    onCollapse()
+                } label: {
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 11, weight: .semibold))
+                        .frame(width: 22, height: 22)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .foregroundColor(.secondary)
+                .help("Collapse clips")
+                .accessibilityLabel("Collapse clips")
+
                 Spacer()
+
                 Button("Clear") {
                     onClear()
                 }
@@ -250,23 +262,17 @@ private struct ClipShelfDrawer: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 18)
             } else {
-                ScrollView {
-                    LazyVStack(spacing: 0) {
-                        ForEach(clips) { clip in
-                            ClipShelfRow(
-                                clip: clip,
-                                previousAppName: previousAppName,
-                                previousAppIcon: previousAppIcon,
-                                canPasteToPreviousApp: canPasteToPreviousApp,
-                                onInsert: { onInsert(clip) },
-                                onPaste: { onPaste(clip) },
-                                onCopy: { onCopy(clip) },
-                                onDelete: { onDelete(clip) }
-                            )
-                            Divider()
-                        }
-                    }
-                }
+                ClipShelfTable(
+                    clips: clips,
+                    previousAppName: previousAppName,
+                    previousAppIcon: previousAppIcon,
+                    canPasteToPreviousApp: canPasteToPreviousApp,
+                    feedback: feedback,
+                    onInsert: onInsert,
+                    onPaste: onPaste,
+                    onCopy: onCopy,
+                    onDelete: onDelete
+                )
                 .frame(maxHeight: 180)
             }
         }
@@ -274,81 +280,230 @@ private struct ClipShelfDrawer: View {
     }
 }
 
-private struct ClipShelfRow: View {
-    let clip: ClipShelfItem
+private struct ClipShelfTable: NSViewRepresentable {
+    let clips: [ClipShelfItem]
     let previousAppName: String?
     let previousAppIcon: NSImage?
     let canPasteToPreviousApp: Bool
-    let onInsert: () -> Void
-    let onPaste: () -> Void
-    let onCopy: () -> Void
-    let onDelete: () -> Void
+    let feedback: (clipID: UUID, message: String)?
+    let onInsert: (ClipShelfItem) -> Void
+    let onPaste: (ClipShelfItem) -> Void
+    let onCopy: (ClipShelfItem) -> Void
+    let onDelete: (ClipShelfItem) -> Void
 
-    var body: some View {
-        HStack(spacing: 10) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(clip.content)
-                    .font(.system(size: 12))
-                    .foregroundColor(.primary)
-                    .lineLimit(2)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
 
-                Text(metadata)
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundColor(.secondary)
-                    .lineLimit(1)
-            }
+    func makeNSView(context: Context) -> NSScrollView {
+        let tableView = ClipNSTableView()
+        tableView.headerView = nil
+        tableView.rowHeight = 62
+        tableView.intercellSpacing = NSSize(width: 0, height: 0)
+        tableView.backgroundColor = .clear
+        tableView.selectionHighlightStyle = .none
+        tableView.allowsEmptySelection = true
+        tableView.allowsMultipleSelection = false
+        tableView.dataSource = context.coordinator
+        tableView.delegate = context.coordinator
+        tableView.clipCoordinator = context.coordinator
 
-            Button {
-                showActionMenu()
-            } label: {
-                Image(systemName: "ellipsis")
-                    .font(.system(size: 13, weight: .semibold))
-                    .frame(width: 30, height: 30)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.borderless)
-            .foregroundColor(.secondary)
-            .help("Clip actions")
-            .accessibilityLabel("Clip actions")
+        let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("clip"))
+        column.resizingMask = .autoresizingMask
+        tableView.addTableColumn(column)
+
+        let scrollView = NSScrollView()
+        scrollView.drawsBackground = false
+        scrollView.hasVerticalScroller = true
+        scrollView.autohidesScrollers = true
+        scrollView.borderType = .noBorder
+        scrollView.documentView = tableView
+
+        context.coordinator.tableView = tableView
+        return scrollView
+    }
+
+    func updateNSView(_ scrollView: NSScrollView, context: Context) {
+        context.coordinator.parent = self
+        if let tableView = scrollView.documentView as? NSTableView {
+            tableView.reloadData()
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 8)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .contentShape(Rectangle())
-        .overlay(
-            ClipRightClickView {
-                showActionMenu()
-            }
-        )
     }
 
-    private func showActionMenu() {
-        guard let event = NSApp.currentEvent else { return }
+    final class Coordinator: NSObject, NSTableViewDataSource, NSTableViewDelegate {
+        var parent: ClipShelfTable
+        weak var tableView: NSTableView?
 
-        let menu = NSMenu()
-        menu.addActionItem(
-            title: pasteTitle,
-            image: previousAppIcon,
-            isEnabled: canPasteToPreviousApp,
-            action: onPaste
-        )
-        menu.addActionItem(title: "Copy to Clipboard", systemSymbolName: "doc.on.doc", action: onCopy)
-        menu.addActionItem(title: "Paste to Note", systemSymbolName: "note.text", action: onInsert)
-        menu.addItem(.separator())
-        menu.addActionItem(title: "Delete Entry", systemSymbolName: "trash", isDestructive: true, action: onDelete)
-
-        NSMenu.popUpContextMenu(menu, with: event, for: event.window?.contentView ?? NSView())
-    }
-
-    private var pasteTitle: String {
-        if let previousAppName, !previousAppName.isEmpty {
-            return "Paste to \(previousAppName)"
+        init(_ parent: ClipShelfTable) {
+            self.parent = parent
         }
-        return "Paste to Previous App"
+
+        func numberOfRows(in tableView: NSTableView) -> Int {
+            parent.clips.count
+        }
+
+        func tableView(_ tableView: NSTableView, heightOfRow row: Int) -> CGFloat {
+            62
+        }
+
+        func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
+            guard parent.clips.indices.contains(row) else { return nil }
+            let clip = parent.clips[row]
+            let view = ClipTableCellView()
+            view.configure(clip: clip, feedback: parent.feedback?.clipID == clip.id ? parent.feedback?.message : nil)
+            view.onActions = { [weak self] in
+                self?.showMenu(for: clip)
+            }
+            return view
+        }
+
+        func showMenu(for clip: ClipShelfItem) {
+            guard let event = NSApp.currentEvent,
+                  let view = event.window?.contentView else { return }
+            NSMenu.popUpContextMenu(menu(for: clip), with: event, for: view)
+        }
+
+        private func menu(for clip: ClipShelfItem) -> NSMenu {
+            let menu = NSMenu()
+            menu.addActionItem(
+                title: pasteTitle,
+                image: parent.previousAppIcon,
+                isEnabled: parent.canPasteToPreviousApp,
+                action: { [parent] in parent.onPaste(clip) }
+            )
+            menu.addActionItem(title: "Copy to Clipboard", systemSymbolName: "doc.on.doc") { [parent] in
+                parent.onCopy(clip)
+            }
+            menu.addActionItem(title: "Paste to Note", systemSymbolName: "note.text") { [parent] in
+                parent.onInsert(clip)
+            }
+            menu.addItem(.separator())
+            menu.addActionItem(title: "Delete Entry", systemSymbolName: "trash", isDestructive: true) { [parent] in
+                parent.onDelete(clip)
+            }
+            return menu
+        }
+
+        private var pasteTitle: String {
+            if let previousAppName = parent.previousAppName, !previousAppName.isEmpty {
+                return "Paste to \(previousAppName)"
+            }
+            return "Paste to Previous App"
+        }
+    }
+}
+
+private final class ClipNSTableView: NSTableView {
+    weak var clipCoordinator: ClipShelfTable.Coordinator?
+
+    override func mouseDown(with event: NSEvent) {
+        showMenu(for: event)
     }
 
-    private var metadata: String {
+    override func rightMouseDown(with event: NSEvent) {
+        showMenu(for: event)
+    }
+
+    private func showMenu(for event: NSEvent) {
+        let point = convert(event.locationInWindow, from: nil)
+        let rowIndex = row(at: point)
+        guard rowIndex >= 0,
+              let coordinator = clipCoordinator,
+              coordinator.parent.clips.indices.contains(rowIndex) else { return }
+        coordinator.showMenu(for: coordinator.parent.clips[rowIndex])
+    }
+}
+
+private final class ClipTableCellView: NSTableCellView {
+    var onActions: (() -> Void)?
+
+    private let titleField = NSTextField(labelWithString: "")
+    private let metadataField = NSTextField(labelWithString: "")
+    private let actionsButton = NSButton()
+    private var trackingArea: NSTrackingArea?
+    private var isHovered = false {
+        didSet {
+            needsDisplay = true
+        }
+    }
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        wantsLayer = true
+
+        titleField.font = .systemFont(ofSize: 12)
+        titleField.textColor = .labelColor
+        titleField.lineBreakMode = .byTruncatingTail
+        titleField.maximumNumberOfLines = 2
+
+        metadataField.font = .systemFont(ofSize: 10, weight: .medium)
+        metadataField.textColor = .secondaryLabelColor
+        metadataField.lineBreakMode = .byTruncatingTail
+
+        actionsButton.image = NSImage(systemSymbolName: "ellipsis", accessibilityDescription: "Clip actions")
+        actionsButton.bezelStyle = .regularSquare
+        actionsButton.isBordered = false
+        actionsButton.target = self
+        actionsButton.action = #selector(actionsClicked)
+        actionsButton.contentTintColor = .secondaryLabelColor
+
+        addSubview(titleField)
+        addSubview(metadataField)
+        addSubview(actionsButton)
+    }
+
+    required init?(coder: NSCoder) {
+        nil
+    }
+
+    func configure(clip: ClipShelfItem, feedback: String?) {
+        titleField.stringValue = clip.content
+        metadataField.stringValue = feedback ?? metadata(for: clip)
+        metadataField.textColor = feedback == nil ? .secondaryLabelColor : .controlAccentColor
+    }
+
+    override func layout() {
+        super.layout()
+        actionsButton.frame = NSRect(x: bounds.width - 44, y: 16, width: 30, height: 30)
+        titleField.frame = NSRect(x: 14, y: 31, width: max(0, bounds.width - 62), height: 18)
+        metadataField.frame = NSRect(x: 14, y: 13, width: max(0, bounds.width - 62), height: 15)
+    }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let trackingArea {
+            removeTrackingArea(trackingArea)
+        }
+        let area = NSTrackingArea(
+            rect: bounds,
+            options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
+            owner: self
+        )
+        addTrackingArea(area)
+        trackingArea = area
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        super.draw(dirtyRect)
+        guard isHovered else { return }
+        NSColor.selectedContentBackgroundColor.withAlphaComponent(0.16).setFill()
+        let rect = bounds.insetBy(dx: 6, dy: 4)
+        NSBezierPath(roundedRect: rect, xRadius: 7, yRadius: 7).fill()
+    }
+
+    override func mouseEntered(with event: NSEvent) {
+        isHovered = true
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        isHovered = false
+    }
+
+    @objc private func actionsClicked() {
+        onActions?()
+    }
+
+    private func metadata(for clip: ClipShelfItem) -> String {
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .abbreviated
         let time = formatter.localizedString(for: clip.capturedAt, relativeTo: Date())
@@ -356,37 +511,6 @@ private struct ClipShelfRow: View {
             return "\(sourceAppName) · \(time)"
         }
         return time
-    }
-}
-
-private struct ClipRightClickView: NSViewRepresentable {
-    let onRightClick: () -> Void
-
-    func makeNSView(context: Context) -> NSView {
-        let view = RightClickView()
-        view.onRightClick = onRightClick
-        return view
-    }
-
-    func updateNSView(_ nsView: NSView, context: Context) {
-        guard let view = nsView as? RightClickView else { return }
-        view.onRightClick = onRightClick
-    }
-
-    private final class RightClickView: NSView {
-        var onRightClick: (() -> Void)?
-
-        override func hitTest(_ point: NSPoint) -> NSView? {
-            guard let event = window?.currentEvent,
-                  event.type == .rightMouseDown || event.type == .rightMouseUp else {
-                return nil
-            }
-            return self
-        }
-
-        override func rightMouseDown(with event: NSEvent) {
-            onRightClick?()
-        }
     }
 }
 

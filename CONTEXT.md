@@ -16,6 +16,7 @@ The product should stay local-first, fast, and single-purpose. It should not bec
 - Plain text editor backed by `NSTextView`.
 - Clipboard polling via `NSPasteboard.changeCount`.
 - Recent clip shelf with captured text, source app metadata, capture time, and a cap of 50 clips.
+- Clip Shelf rows should use a native AppKit list implementation, such as `NSTableView`, embedded in the SwiftUI drawer.
 - Clicking a clip opens a clip action menu.
 - The clip action menu includes paste to the previously focused external app, copy to clipboard, paste to note, and delete entry. The note action is labeled `Paste to Note`.
 - Copy-all writes the scratchpad text to the clipboard.
@@ -38,6 +39,8 @@ The product should stay local-first, fast, and single-purpose. It should not bec
 
 - Current v1 is not a block-based document editor. Captured clips live in a shelf and become plain text when inserted.
 - Because a pinned note can make the clip destination ambiguous, plain clip clicks open an explicit action menu instead of inserting directly.
+- Left-clicking anywhere on a clip row opens the clip action menu. Right-clicking anywhere on a clip row opens the same menu. The trailing actions button is a discoverability affordance for the same menu.
+- Clip Shelf rows do not have persistent selection. Hover and click states are transient action affordances only.
 - The paste-to-previous-app action is available whenever clips are shown, not only when the popover is pinned. If no previous external app is known, the action should fall back to copying the clip.
 - If no previous external app is known, the paste-to-previous-app action is disabled in the clip action menu.
 - If Accessibility permission is unavailable, paste-to-previous-app should copy the clip and show `Copied` until permission is granted.
@@ -45,6 +48,7 @@ The product should stay local-first, fast, and single-purpose. It should not bec
 - Delete entry removes a single clip immediately without confirmation and persists the shelf.
 - Paste-to-previous-app uses the system pasteboard as transport, marks the write as app-owned so it is not recaptured, focuses the previous external app, and sends Cmd+V. The clip remains on the system clipboard afterward.
 - The scratchpad itself is plain text. Preserve normal text editing behavior and undo expectations.
+- The Clip Shelf drawer/header/footer can stay SwiftUI, but the row area should use native AppKit list behavior for stable rows, full-row context menus, trailing actions, and predictable hit testing.
 - Captured clipboard data should remain local.
 - Capture behavior should feel obvious and controllable before the app is treated as launch-ready.
 
