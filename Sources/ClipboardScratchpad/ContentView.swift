@@ -285,24 +285,42 @@ private struct ClipShelfRow: View {
     let onDelete: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(clip.content)
-                .font(.system(size: 12))
-                .foregroundColor(.primary)
-                .lineLimit(2)
-                .frame(maxWidth: .infinity, alignment: .leading)
+        HStack(spacing: 10) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(clip.content)
+                    .font(.system(size: 12))
+                    .foregroundColor(.primary)
+                    .lineLimit(2)
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
-            Text(metadata)
-                .font(.system(size: 10, weight: .medium))
-                .foregroundColor(.secondary)
-                .lineLimit(1)
+                Text(metadata)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+            }
+
+            Button {
+                showActionMenu()
+            } label: {
+                Image(systemName: "ellipsis")
+                    .font(.system(size: 13, weight: .semibold))
+                    .frame(width: 30, height: 30)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.borderless)
+            .foregroundColor(.secondary)
+            .help("Clip actions")
+            .accessibilityLabel("Clip actions")
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
-        .onTapGesture {
-            showActionMenu()
-        }
+        .overlay(
+            ClipRightClickView {
+                showActionMenu()
+            }
+        )
     }
 
     private func showActionMenu() {
@@ -341,6 +359,37 @@ private struct ClipShelfRow: View {
     }
 }
 
+private struct ClipRightClickView: NSViewRepresentable {
+    let onRightClick: () -> Void
+
+    func makeNSView(context: Context) -> NSView {
+        let view = RightClickView()
+        view.onRightClick = onRightClick
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        guard let view = nsView as? RightClickView else { return }
+        view.onRightClick = onRightClick
+    }
+
+    private final class RightClickView: NSView {
+        var onRightClick: (() -> Void)?
+
+        override func hitTest(_ point: NSPoint) -> NSView? {
+            guard let event = window?.currentEvent,
+                  event.type == .rightMouseDown || event.type == .rightMouseUp else {
+                return nil
+            }
+            return self
+        }
+
+        override func rightMouseDown(with event: NSEvent) {
+            onRightClick?()
+        }
+    }
+}
+
 private final class MenuAction: NSObject {
     private let action: () -> Void
 
@@ -349,6 +398,80 @@ private final class MenuAction: NSObject {
     }
 
     @objc func runMenuAction() {
+        action()
+    }
+}
+
+private final class ClipMenuItemView: NSView {
+    private static let itemSize = NSSize(width: 216, height: 40)
+    private static let iconSize = NSSize(width: 16, height: 16)
+
+    private let action: () -> Void
+    private let isEnabled: Bool
+    private var trackingArea: NSTrackingArea?
+    private var isHovered = false {
+        didSet {
+            needsDisplay = true
+        }
+    }
+
+    init(title: String, image: NSImage?, isEnabled: Bool, isDestructive: Bool, action: @escaping () -> Void) {
+        self.action = action
+        self.isEnabled = isEnabled
+        super.init(frame: NSRect(origin: .zero, size: Self.itemSize))
+        wantsLayer = true
+
+        let imageView = NSImageView(frame: NSRect(x: 15, y: 12, width: Self.iconSize.width, height: Self.iconSize.height))
+        imageView.image = image
+        imageView.contentTintColor = isDestructive ? .systemRed : .secondaryLabelColor
+        imageView.alphaValue = isEnabled ? 1 : 0.45
+        addSubview(imageView)
+
+        let label = NSTextField(labelWithString: title)
+        label.frame = NSRect(x: 42, y: 10, width: 158, height: 20)
+        label.font = .systemFont(ofSize: 12, weight: .medium)
+        label.textColor = isDestructive ? .systemRed : .labelColor
+        label.alphaValue = isEnabled ? 1 : 0.45
+        addSubview(label)
+    }
+
+    required init?(coder: NSCoder) {
+        nil
+    }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let trackingArea {
+            removeTrackingArea(trackingArea)
+        }
+        let area = NSTrackingArea(
+            rect: bounds,
+            options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
+            owner: self
+        )
+        addTrackingArea(area)
+        trackingArea = area
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        super.draw(dirtyRect)
+        guard isEnabled, isHovered else { return }
+        NSColor.selectedContentBackgroundColor.withAlphaComponent(0.25).setFill()
+        let rect = bounds.insetBy(dx: 6, dy: 4)
+        NSBezierPath(roundedRect: rect, xRadius: 7, yRadius: 7).fill()
+    }
+
+    override func mouseEntered(with event: NSEvent) {
+        isHovered = true
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        isHovered = false
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        guard isEnabled else { return }
+        enclosingMenuItem?.menu?.cancelTracking()
         action()
     }
 }
@@ -367,21 +490,26 @@ private extension NSMenu {
         item.target = menuAction
         item.representedObject = menuAction
         item.isEnabled = isEnabled
-        if let image {
-            image.size = NSSize(width: 16, height: 16)
-            item.image = image
-        } else if let systemSymbolName {
-            item.image = NSImage(systemSymbolName: systemSymbolName, accessibilityDescription: title)
-        }
-
-        if isDestructive {
-            item.attributedTitle = NSAttributedString(
-                string: title,
-                attributes: [.foregroundColor: NSColor.systemRed]
-            )
-        }
+        item.view = ClipMenuItemView(
+            title: title,
+            image: menuImage(image: image, systemSymbolName: systemSymbolName, title: title),
+            isEnabled: isEnabled,
+            isDestructive: isDestructive,
+            action: action
+        )
 
         addItem(item)
+    }
+
+    private func menuImage(image: NSImage?, systemSymbolName: String?, title: String) -> NSImage? {
+        if let image {
+            image.size = NSSize(width: 16, height: 16)
+            return image
+        }
+        if let systemSymbolName {
+            return NSImage(systemSymbolName: systemSymbolName, accessibilityDescription: title)
+        }
+        return nil
     }
 }
 
