@@ -27,6 +27,8 @@ struct ContentView: View {
                     } label: {
                         Image(systemName: store.isPinned ? "pin.fill" : "pin")
                             .font(.body)
+                            .frame(width: 30, height: 30)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .foregroundColor(store.isPinned ? .primary : .secondary)
@@ -39,6 +41,8 @@ struct ContentView: View {
                     } label: {
                         Image(systemName: "gearshape")
                             .font(.body)
+                            .frame(width: 30, height: 30)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .help("Settings")
@@ -89,6 +93,8 @@ struct ContentView: View {
                                     .background(Capsule().fill(Color.secondary.opacity(0.18)))
                             }
                         }
+                        .frame(height: 30)
+                        .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .foregroundColor(isShowingClips ? .primary : .secondary)
@@ -100,6 +106,8 @@ struct ContentView: View {
                     } label: {
                         Image(systemName: "doc.on.doc")
                             .font(.body)
+                            .frame(width: 30, height: 30)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .help("Copy All")
@@ -113,6 +121,8 @@ struct ContentView: View {
                     } label: {
                         Image(systemName: "trash")
                             .font(.body)
+                            .frame(width: 30, height: 30)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .help("Clear")
@@ -157,6 +167,8 @@ private struct SettingsView: View {
                 } label: {
                     Image(systemName: "xmark")
                         .font(.system(size: 12, weight: .semibold))
+                            .frame(width: 30, height: 30)
+                            .contentShape(Rectangle())
                 }
                 .buttonStyle(.borderless)
                 .help("Close")
