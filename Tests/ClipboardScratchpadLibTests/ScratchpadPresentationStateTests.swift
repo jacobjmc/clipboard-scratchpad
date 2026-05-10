@@ -20,6 +20,14 @@ final class ScratchpadPresentationStateTests: XCTestCase {
         XCTAssertEqual(state, ScratchpadPresentationState(mode: .floatingWindow, visibility: .visible))
     }
 
+    func testNativePopoverDetachDoesNotChangePresentationState() {
+        var state = ScratchpadPresentationState(mode: .popover, visibility: .visible)
+
+        state.popoverDetached()
+
+        XCTAssertEqual(state, ScratchpadPresentationState(mode: .popover, visibility: .visible))
+    }
+
     func testMenuBarClickTogglesFloatingWindowVisibilityWithoutUnpinning() {
         var state = ScratchpadPresentationState(mode: .floatingWindow, visibility: .visible)
 

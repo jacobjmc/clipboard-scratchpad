@@ -26,6 +26,10 @@ public struct ScratchpadPresentationState: Equatable {
         visibility = .visible
     }
 
+    public mutating func popoverDetached() {
+        visibility = .visible
+    }
+
     public mutating func windowClosed() {
         visibility = .hidden
     }

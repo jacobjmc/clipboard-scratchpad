@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 import ClipboardScratchpadLib
 
-final class StatusBarController {
+final class StatusBarController: NSObject, NSPopoverDelegate, NSWindowDelegate {
     private static let contentSize = NSSize(width: 440, height: 520)
 
     private let statusItem: NSStatusItem
@@ -17,17 +17,20 @@ final class StatusBarController {
         self.store = store
 
         popover = NSPopover()
+        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        super.init()
         popover.contentSize = Self.contentSize
         popover.behavior = .transient
+        popover.delegate = self
         popover.contentViewController = NSHostingController(
             rootView: ContentView().environmentObject(store)
         )
 
-        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = statusItem.button {
             button.image = NSImage(systemSymbolName: "doc.on.clipboard", accessibilityDescription: "Clipboard Scratchpad")
             button.action = #selector(toggleVisibility)
             button.target = self
+            button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         }
 
         eventMonitor = EventMonitor(mask: [.leftMouseDown, .rightMouseDown]) { [weak self] event in
@@ -60,6 +63,10 @@ final class StatusBarController {
     }
 
     @objc private func toggleVisibility(_ sender: AnyObject?) {
+        if NSApp.currentEvent?.type == .rightMouseUp {
+            showStatusMenu()
+            return
+        }
         presentationState.menuBarItemClicked()
         applyPresentationState(sender)
     }
@@ -87,6 +94,7 @@ final class StatusBarController {
     }
 
     private func showFloatingWindow() {
+        let shouldAnimate = floatingWindow == nil
         if floatingWindow == nil {
             let resolved = resolveFloatingFrame()
             floatingWindow = FloatingWindow(
@@ -101,12 +109,49 @@ final class StatusBarController {
                 self?.applyPresentationState(nil)
             }
         }
+        if shouldAnimate {
+            floatingWindow?.alphaValue = 0
+        }
         floatingWindow?.orderFront(nil)
+        if shouldAnimate {
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0.14
+                context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+                floatingWindow?.animator().alphaValue = 1
+            }
+        }
         NSApp.activate(ignoringOtherApps: true)
     }
 
     private func hideFloatingWindow() {
         floatingWindow?.orderOut(nil)
+    }
+
+    private func showStatusMenu() {
+        let menu = NSMenu()
+        let resetItem = NSMenuItem(
+            title: "Reset Pinned Location",
+            action: #selector(resetPinnedLocation),
+            keyEquivalent: ""
+        )
+        resetItem.target = self
+        resetItem.isEnabled = store.floatingFrame != nil || floatingWindow != nil
+        menu.addItem(resetItem)
+
+        statusItem.menu = menu
+        statusItem.button?.performClick(nil)
+        statusItem.menu = nil
+    }
+
+    @objc private func resetPinnedLocation() {
+        let frame = fallbackFrame()
+        store.floatingFrame = nil
+        floatingWindow?.setFrame(frame, display: true)
+        popover.contentViewController?.view.window?.setFrame(frame, display: true)
+        if presentationState.mode == .floatingWindow {
+            presentationState.visibility = .visible
+            applyPresentationState(nil)
+        }
     }
 
     private func resolveFloatingFrame() -> CGRect {
@@ -155,5 +200,24 @@ final class StatusBarController {
             closePopover(nil)
             hideFloatingWindow()
         }
+    }
+
+    func popoverShouldDetach(_ popover: NSPopover) -> Bool {
+        true
+    }
+
+    func popoverDidDetach(_ popover: NSPopover) {
+        presentationState.popoverDetached()
+
+        let window = popover.contentViewController?.view.window
+        window?.delegate = self
+        if let frame = window?.frame {
+            store.floatingFrame = frame
+        }
+    }
+
+    func windowDidMove(_ notification: Notification) {
+        guard let window = notification.object as? NSWindow, window === popover.contentViewController?.view.window else { return }
+        store.floatingFrame = window.frame
     }
 }
