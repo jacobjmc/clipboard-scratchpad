@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import ClipboardScratchpadLib
 
 struct ContentView: View {
     @EnvironmentObject var store: ScratchpadStore
@@ -56,6 +57,7 @@ struct ContentView: View {
             }
             .padding(.horizontal, 14)
             .frame(height: 32)
+            .background(VisualEffectBar())
 
             PlainTextView(text: $store.noteText) {
                 store.noteDidChange()
@@ -139,6 +141,7 @@ struct ContentView: View {
             }
             .padding(.horizontal, 14)
             .frame(height: 32)
+            .background(VisualEffectBar())
 
         }
         .alert("Clear Scratchpad?", isPresented: $showingClearAlert) {
@@ -150,6 +153,18 @@ struct ContentView: View {
             Text("This will remove all content. This cannot be undone.")
         }
     }
+}
+
+private struct VisualEffectBar: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let view = NSVisualEffectView()
+        view.material = .headerView
+        view.blendingMode = .behindWindow
+        view.state = .active
+        return view
+    }
+
+    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {}
 }
 
 private struct SettingsView: View {

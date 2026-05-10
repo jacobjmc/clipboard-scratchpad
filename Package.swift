@@ -5,9 +5,17 @@ let package = Package(
     name: "ClipboardScratchpad",
     platforms: [.macOS(.v14)],
     products: [
-        .executable(name: "ClipboardScratchpad", targets: ["ClipboardScratchpad"])
+        .executable(name: "ClipboardScratchpad", targets: ["ClipboardScratchpadApp"])
     ],
     targets: [
-        .executableTarget(name: "ClipboardScratchpad")
+        .target(name: "ClipboardScratchpadLib"),
+        .executableTarget(
+            name: "ClipboardScratchpadApp",
+            dependencies: ["ClipboardScratchpadLib"]
+        ),
+        .testTarget(
+            name: "ClipboardScratchpadLibTests",
+            dependencies: ["ClipboardScratchpadLib"]
+        )
     ]
 )

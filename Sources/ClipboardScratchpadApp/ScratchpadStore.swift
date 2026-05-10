@@ -2,6 +2,7 @@ import Foundation
 import Combine
 import AppKit
 import ApplicationServices
+import ClipboardScratchpadLib
 
 final class ScratchpadStore: ObservableObject {
     @Published var noteText: String = ""
@@ -9,6 +10,13 @@ final class ScratchpadStore: ObservableObject {
     @Published var persistenceWarning: String? = nil
     @Published var clipFeedback: (clipID: UUID, message: String)? = nil
     @Published var updatedAt: Date? = nil
+    @Published var floatingFrame: CGRect? = nil {
+        didSet {
+            if floatingFrame != oldValue {
+                scheduleSave()
+            }
+        }
+    }
     @Published var isAccessibilityTrusted: Bool = AXIsProcessTrusted()
     @Published var isPinned: Bool = false {
         didSet {
@@ -178,7 +186,7 @@ final class ScratchpadStore: ObservableObject {
 
     private func saveImmediately() {
         saveWorkItem?.cancel()
-        let state = StoreState(noteText: noteText, updatedAt: updatedAt, clips: clips)
+        let state = StoreState(noteText: noteText, updatedAt: updatedAt, clips: clips, floatingFrame: floatingFrame)
         do {
             let data = try JSONEncoder().encode(state)
             try data.write(to: storeURL)
@@ -197,6 +205,7 @@ final class ScratchpadStore: ObservableObject {
                 noteText = state.noteText
                 updatedAt = state.updatedAt
                 clips = state.clips
+                floatingFrame = state.floatingFrame
                 lastCapturedClipText = state.clips.first?.content.trimmingCharacters(in: .whitespacesAndNewlines)
                 return
             }
