@@ -22,14 +22,24 @@ The product should stay local-first, fast, and single-purpose. It should not bec
 - Copy-all writes the scratchpad text to the clipboard.
 - Clear removes the scratchpad after confirmation.
 - The scratchpad opens as a menu bar popover by default.
+- Dragging the anchored popover away from the menu bar creates a detached window. Detached window mode does not turn on pinned mode.
 - Pinning promotes the scratchpad into a real floating window or panel that can be moved around the screen.
 - Unpinning returns the scratchpad to the normal anchored popover behavior. The last floating position is retained for the next pinned session.
-- The last floating position persists across app launches and should be restored only when the saved frame is still visible on an available display. If the saved position is no longer visible, the window should fall back to the default position below the menu bar item.
+- The last detached or pinned window frame persists across app launches and should be restored only when the saved frame is still visible on an available display. If the saved frame is no longer visible, the window should fall back to the default position below the menu bar item.
 - Pin state does not persist across launches; the app starts in normal menu bar popover mode.
 - While the pinned floating window is open, clicking the menu bar item hides or shows that same window. It does not unpin the scratchpad or replace it with the popover.
 - The pinned floating surface should feel like a borderless utility panel and keep the app's in-content header controls instead of adding a standard macOS title bar.
 - The pinned floating window is moved by dragging the top header area, excluding interactive controls.
-- The pinned floating window uses the same fixed content size as the popover for now; it is movable but not resizable.
+- The anchored popover uses a fixed content size. Detached and pinned windows can be resized.
+- Detached and pinned windows share one saved window frame, including size and position. The saved frame does not affect the anchored popover size.
+- Detached and pinned windows have a minimum size of 360 by 320 points. They do not have an app-defined maximum size.
+- Detached and pinned windows use native macOS edge and corner resizing. The app should not add a custom resize handle or explanatory resize UI.
+- When detached or pinned windows are resized, extra height should primarily go to the scratchpad editor. The Clip Shelf keeps its capped height and scroll behavior.
+- Unpinning returns to the fixed-size anchored popover. Saved detached or pinned window size is not applied to the anchored popover.
+- The menu bar recovery action should be named `Reset Window Size and Location` and should restore the saved detached or pinned window frame to the default size and position below the menu bar item.
+- The reset action is available whenever a saved window frame exists or a detached or pinned window is currently open.
+- Resizing or moving a detached window immediately updates the shared saved window frame, even before the user pins it.
+- The persisted frame field should be named `windowFrame`, not `floatingFrame`, because it belongs to both detached and pinned windows. Do not preserve or migrate the old `floatingFrame` key.
 - While visible, the pinned floating window stays above normal application windows.
 - The pinned floating window does not dismiss when the user clicks outside it or presses Escape.
 - Closing the pinned floating window hides it while keeping pinned mode active. Only the pin control changes pinned/unpinned mode.
