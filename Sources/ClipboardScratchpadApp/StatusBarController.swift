@@ -67,6 +67,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate, NSWindowDelegate {
             showStatusMenu()
             return
         }
+        syncPresentationStateWithAppKit()
         presentationState.menuBarItemClicked()
         applyPresentationState(sender)
     }
@@ -127,6 +128,19 @@ final class StatusBarController: NSObject, NSPopoverDelegate, NSWindowDelegate {
         floatingWindow?.orderOut(nil)
     }
 
+    private func syncPresentationStateWithAppKit() {
+        switch presentationState.mode {
+        case .popover:
+            if !popover.isShown {
+                presentationState.visibility = .hidden
+            }
+        case .floatingWindow:
+            if floatingWindow?.isVisible != true {
+                presentationState.visibility = .hidden
+            }
+        }
+    }
+
     private func showStatusMenu() {
         let menu = NSMenu()
         let resetItem = NSMenuItem(
@@ -181,6 +195,9 @@ final class StatusBarController: NSObject, NSPopoverDelegate, NSWindowDelegate {
 
     @objc private func pinChanged(_ notification: Notification) {
         guard let pinned = notification.object as? Bool else { return }
+        if pinned, let window = popover.contentViewController?.view.window, !popover.isShown {
+            store.floatingFrame = window.frame
+        }
         presentationState.pinChanged(isPinned: pinned)
         applyPresentationState(nil)
     }
@@ -214,6 +231,12 @@ final class StatusBarController: NSObject, NSPopoverDelegate, NSWindowDelegate {
         if let frame = window?.frame {
             store.floatingFrame = frame
         }
+    }
+
+    func popoverDidClose(_ notification: Notification) {
+        guard presentationState.mode == .popover else { return }
+        presentationState.visibility = .hidden
+        eventMonitor?.stop()
     }
 
     func windowDidMove(_ notification: Notification) {
