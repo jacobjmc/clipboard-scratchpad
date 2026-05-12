@@ -100,8 +100,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate, NSWindowDelegate {
 
     private func showFloatingWindow() {
         let shouldAnimate = floatingWindow == nil
+        let resolved = resolveFloatingFrame()
         if floatingWindow == nil {
-            let resolved = resolveFloatingFrame()
             floatingWindow = FloatingWindow(
                 contentRect: resolved,
                 level: .floating,
@@ -119,6 +119,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate, NSWindowDelegate {
                 self?.presentationState.windowClosed()
                 self?.applyPresentationState(nil)
             }
+        } else {
+            floatingWindow?.setFrame(resolved, display: true)
         }
         if shouldAnimate {
             floatingWindow?.alphaValue = 0
@@ -211,9 +213,11 @@ final class StatusBarController: NSObject, NSPopoverDelegate, NSWindowDelegate {
     @objc private func pinChanged(_ notification: Notification) {
         guard let pinned = notification.object as? Bool else { return }
         if pinned, let detachedWindow, detachedWindow.isVisible {
-            store.windowFrame = detachedWindow.frame
-        }
-        if pinned, let window = popover.contentViewController?.view.window, !popover.isShown {
+            store.windowFrame = WindowPlacementResolver.enforceMinimumSize(
+                detachedWindow.frame,
+                minimumSize: Self.minimumWindowSize
+            )
+        } else if pinned, let window = popover.contentViewController?.view.window, !popover.isShown {
             store.windowFrame = window.frame
         }
         presentationState.pinChanged(isPinned: pinned)
@@ -287,6 +291,9 @@ final class StatusBarController: NSObject, NSPopoverDelegate, NSWindowDelegate {
     }
 
     private func hideDetachedWindow() {
+        if let detachedWindow, detachedWindow.isVisible, !isResettingWindowFrame {
+            store.windowFrame = detachedWindow.frame
+        }
         detachedWindow?.orderOut(nil)
     }
 
