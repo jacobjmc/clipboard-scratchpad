@@ -59,26 +59,34 @@ struct ContentView: View {
             .frame(height: 32)
             .background(VisualEffectBar())
 
-            PlainTextView(text: $store.noteText) {
-                store.noteDidChange()
-            }
-
-            Divider()
-
             if isShowingClips {
-                ClipShelfDrawer(
-                    clips: store.clips,
-                    previousAppName: store.previousExternalAppName,
-                    previousAppIcon: store.previousExternalAppIcon,
-                    canPasteToPreviousApp: store.hasPreviousExternalApplication,
-                    feedback: store.clipFeedback,
-                    onInsert: { store.insertClip($0) },
-                    onPaste: { store.pasteClipToPreviousApp($0) },
-                    onCopy: { store.copyClip($0) },
-                    onDelete: { store.deleteClip($0) },
-                    onClear: { store.clearClips() },
-                    onCollapse: { isShowingClips = false }
-                )
+                VSplitView {
+                    PlainTextView(text: $store.noteText) {
+                        store.noteDidChange()
+                    }
+                    .frame(minHeight: 96)
+
+                    ClipShelfDrawer(
+                        clips: store.clips,
+                        previousAppName: store.previousExternalAppName,
+                        previousAppIcon: store.previousExternalAppIcon,
+                        canPasteToPreviousApp: store.hasPreviousExternalApplication,
+                        feedback: store.clipFeedback,
+                        onInsert: { store.insertClip($0) },
+                        onPaste: { store.pasteClipToPreviousApp($0) },
+                        onCopy: { store.copyClip($0) },
+                        onDelete: { store.deleteClip($0) },
+                        onClear: { store.clearClips() },
+                        onCollapse: { isShowingClips = false }
+                    )
+                    .frame(minHeight: 104, idealHeight: 220)
+                }
+                .frame(maxHeight: .infinity)
+                Divider()
+            } else {
+                PlainTextView(text: $store.noteText) {
+                    store.noteDidChange()
+                }
                 Divider()
             }
 
@@ -142,7 +150,6 @@ struct ContentView: View {
             .padding(.horizontal, 14)
             .frame(height: 32)
             .background(VisualEffectBar())
-
         }
         .alert("Clear Scratchpad?", isPresented: $showingClearAlert) {
             Button("Cancel", role: .cancel) { }
@@ -288,7 +295,7 @@ private struct ClipShelfDrawer: View {
                     onCopy: onCopy,
                     onDelete: onDelete
                 )
-                .frame(maxHeight: 180)
+                .frame(maxHeight: .infinity)
             }
         }
         .background(Color(nsColor: .controlBackgroundColor).opacity(0.55))
@@ -339,18 +346,48 @@ private struct ClipShelfTable: NSViewRepresentable {
     }
 
     func updateNSView(_ scrollView: NSScrollView, context: Context) {
+        let shouldReload = context.coordinator.shouldReload(for: self)
         context.coordinator.parent = self
         if let tableView = scrollView.documentView as? NSTableView {
-            tableView.reloadData()
+            tableView.frame.size.width = scrollView.contentSize.width
+            if shouldReload {
+                tableView.reloadData()
+            }
         }
     }
 
     final class Coordinator: NSObject, NSTableViewDataSource, NSTableViewDelegate {
         var parent: ClipShelfTable
         weak var tableView: NSTableView?
+        private var clipIDs: [UUID]
+        private var feedbackID: UUID?
+        private var feedbackMessage: String?
+        private var previousAppName: String?
+        private var canPasteToPreviousApp: Bool
 
         init(_ parent: ClipShelfTable) {
             self.parent = parent
+            self.clipIDs = parent.clips.map(\.id)
+            self.feedbackID = parent.feedback?.clipID
+            self.feedbackMessage = parent.feedback?.message
+            self.previousAppName = parent.previousAppName
+            self.canPasteToPreviousApp = parent.canPasteToPreviousApp
+        }
+
+        func shouldReload(for nextParent: ClipShelfTable) -> Bool {
+            let nextClipIDs = nextParent.clips.map(\.id)
+            let changed = clipIDs != nextClipIDs
+                || feedbackID != nextParent.feedback?.clipID
+                || feedbackMessage != nextParent.feedback?.message
+                || previousAppName != nextParent.previousAppName
+                || canPasteToPreviousApp != nextParent.canPasteToPreviousApp
+
+            clipIDs = nextClipIDs
+            feedbackID = nextParent.feedback?.clipID
+            feedbackMessage = nextParent.feedback?.message
+            previousAppName = nextParent.previousAppName
+            canPasteToPreviousApp = nextParent.canPasteToPreviousApp
+            return changed
         }
 
         func numberOfRows(in tableView: NSTableView) -> Int {
