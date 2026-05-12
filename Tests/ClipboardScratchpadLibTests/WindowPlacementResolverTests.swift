@@ -112,4 +112,26 @@ final class WindowPlacementResolverTests: XCTestCase {
 
         XCTAssertEqual(result, CGRect(x: 692, y: 556, width: 440, height: 520))
     }
+
+    func testSavedFrameSmallerThanMinimumUsesMinimumSize() {
+        let saved = CGRect(x: 100, y: 100, width: 200, height: 200)
+
+        let result = WindowPlacementResolver.enforceMinimumSize(
+            saved,
+            minimumSize: CGSize(width: 360, height: 320)
+        )
+
+        XCTAssertEqual(result, CGRect(x: 100, y: 100, width: 360, height: 320))
+    }
+
+    func testSavedFrameLargerThanMinimumKeepsSize() {
+        let saved = CGRect(x: 100, y: 100, width: 800, height: 700)
+
+        let result = WindowPlacementResolver.enforceMinimumSize(
+            saved,
+            minimumSize: CGSize(width: 360, height: 320)
+        )
+
+        XCTAssertEqual(result, saved)
+    }
 }

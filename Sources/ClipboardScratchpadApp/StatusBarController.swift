@@ -4,6 +4,7 @@ import ClipboardScratchpadLib
 
 final class StatusBarController: NSObject, NSPopoverDelegate, NSWindowDelegate {
     private static let contentSize = NSSize(width: 440, height: 520)
+    private static let minimumWindowSize = NSSize(width: 360, height: 320)
 
     private let statusItem: NSStatusItem
     private let popover: NSPopover
@@ -12,6 +13,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate, NSWindowDelegate {
     private var activationObserver: NSObjectProtocol?
     private var floatingWindow: FloatingWindow?
     private var presentationState = ScratchpadPresentationState()
+    private var isResettingWindowFrame = false
 
     init(store: ScratchpadStore) {
         self.store = store
@@ -103,7 +105,12 @@ final class StatusBarController: NSObject, NSPopoverDelegate, NSWindowDelegate {
                 contentView: ContentView().environmentObject(store)
             )
             floatingWindow?.onMove = { [weak self] frame in
-                self?.store.floatingFrame = frame
+                guard self?.isResettingWindowFrame == false else { return }
+                self?.store.windowFrame = frame
+            }
+            floatingWindow?.onResize = { [weak self] frame in
+                guard self?.isResettingWindowFrame == false else { return }
+                self?.store.windowFrame = frame
             }
             floatingWindow?.onClose = { [weak self] in
                 self?.presentationState.windowClosed()
@@ -144,12 +151,12 @@ final class StatusBarController: NSObject, NSPopoverDelegate, NSWindowDelegate {
     private func showStatusMenu() {
         let menu = NSMenu()
         let resetItem = NSMenuItem(
-            title: "Reset Pinned Location",
-            action: #selector(resetPinnedLocation),
+            title: "Reset Window Size and Location",
+            action: #selector(resetWindowSizeAndLocation),
             keyEquivalent: ""
         )
         resetItem.target = self
-        resetItem.isEnabled = store.floatingFrame != nil || floatingWindow != nil
+        resetItem.isEnabled = store.windowFrame != nil || floatingWindow != nil || popover.contentViewController?.view.window != nil
         menu.addItem(resetItem)
 
         statusItem.menu = menu
@@ -157,11 +164,13 @@ final class StatusBarController: NSObject, NSPopoverDelegate, NSWindowDelegate {
         statusItem.menu = nil
     }
 
-    @objc private func resetPinnedLocation() {
+    @objc private func resetWindowSizeAndLocation() {
         let frame = fallbackFrame()
-        store.floatingFrame = nil
+        isResettingWindowFrame = true
+        store.windowFrame = nil
         floatingWindow?.setFrame(frame, display: true)
         popover.contentViewController?.view.window?.setFrame(frame, display: true)
+        isResettingWindowFrame = false
         if presentationState.mode == .floatingWindow {
             presentationState.visibility = .visible
             applyPresentationState(nil)
@@ -169,12 +178,12 @@ final class StatusBarController: NSObject, NSPopoverDelegate, NSWindowDelegate {
     }
 
     private func resolveFloatingFrame() -> CGRect {
-        guard let saved = store.floatingFrame else {
+        guard let saved = store.windowFrame else {
             return fallbackFrame()
         }
         let screens = NSScreen.screens.map { $0.frame }
         return WindowPlacementResolver.resolve(
-            savedFrame: saved,
+            savedFrame: WindowPlacementResolver.enforceMinimumSize(saved, minimumSize: Self.minimumWindowSize),
             screenFrames: screens,
             fallbackFrame: fallbackFrame()
         )
@@ -196,7 +205,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate, NSWindowDelegate {
     @objc private func pinChanged(_ notification: Notification) {
         guard let pinned = notification.object as? Bool else { return }
         if pinned, let window = popover.contentViewController?.view.window, !popover.isShown {
-            store.floatingFrame = window.frame
+            store.windowFrame = window.frame
         }
         presentationState.pinChanged(isPinned: pinned)
         applyPresentationState(nil)
@@ -227,9 +236,11 @@ final class StatusBarController: NSObject, NSPopoverDelegate, NSWindowDelegate {
         presentationState.popoverDetached()
 
         let window = popover.contentViewController?.view.window
+        window?.styleMask.insert(.resizable)
+        window?.minSize = Self.minimumWindowSize
         window?.delegate = self
         if let frame = window?.frame {
-            store.floatingFrame = frame
+            store.windowFrame = frame
         }
     }
 
@@ -240,7 +251,14 @@ final class StatusBarController: NSObject, NSPopoverDelegate, NSWindowDelegate {
     }
 
     func windowDidMove(_ notification: Notification) {
+        guard !isResettingWindowFrame else { return }
         guard let window = notification.object as? NSWindow, window === popover.contentViewController?.view.window else { return }
-        store.floatingFrame = window.frame
+        store.windowFrame = window.frame
+    }
+
+    func windowDidResize(_ notification: Notification) {
+        guard !isResettingWindowFrame else { return }
+        guard let window = notification.object as? NSWindow, window === popover.contentViewController?.view.window else { return }
+        store.windowFrame = window.frame
     }
 }

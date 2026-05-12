@@ -31,4 +31,13 @@ public enum WindowPlacementResolver {
             height: contentSize.height
         )
     }
+
+    public static func enforceMinimumSize(_ frame: CGRect, minimumSize: CGSize) -> CGRect {
+        CGRect(
+            x: frame.origin.x,
+            y: frame.origin.y,
+            width: max(frame.width, minimumSize.width),
+            height: max(frame.height, minimumSize.height)
+        )
+    }
 }

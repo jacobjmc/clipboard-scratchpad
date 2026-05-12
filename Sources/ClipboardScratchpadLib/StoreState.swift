@@ -21,20 +21,20 @@ public struct StoreState: Codable {
     public var noteText: String
     public var updatedAt: Date?
     public var clips: [ClipShelfItem]
-    public var floatingFrame: CGRect?
+    public var windowFrame: CGRect?
 
-    public init(noteText: String, updatedAt: Date? = nil, clips: [ClipShelfItem] = [], floatingFrame: CGRect? = nil) {
+    public init(noteText: String, updatedAt: Date? = nil, clips: [ClipShelfItem] = [], windowFrame: CGRect? = nil) {
         self.noteText = noteText
         self.updatedAt = updatedAt
         self.clips = clips
-        self.floatingFrame = floatingFrame
+        self.windowFrame = windowFrame
     }
 
     private enum CodingKeys: String, CodingKey {
         case noteText
         case updatedAt
         case clips
-        case floatingFrame
+        case windowFrame
     }
 
     public init(from decoder: Decoder) throws {
@@ -42,7 +42,7 @@ public struct StoreState: Codable {
         noteText = try container.decode(String.self, forKey: .noteText)
         updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt)
         clips = try container.decodeIfPresent([ClipShelfItem].self, forKey: .clips) ?? []
-        floatingFrame = try container.decodeIfPresent(CGRect.self, forKey: .floatingFrame)
+        windowFrame = try container.decodeIfPresent(CGRect.self, forKey: .windowFrame)
     }
 }
 

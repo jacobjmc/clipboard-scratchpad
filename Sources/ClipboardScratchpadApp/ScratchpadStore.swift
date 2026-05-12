@@ -10,9 +10,9 @@ final class ScratchpadStore: ObservableObject {
     @Published var persistenceWarning: String? = nil
     @Published var clipFeedback: (clipID: UUID, message: String)? = nil
     @Published var updatedAt: Date? = nil
-    @Published var floatingFrame: CGRect? = nil {
+    @Published var windowFrame: CGRect? = nil {
         didSet {
-            if floatingFrame != oldValue {
+            if windowFrame != oldValue {
                 scheduleSave()
             }
         }
@@ -186,7 +186,7 @@ final class ScratchpadStore: ObservableObject {
 
     private func saveImmediately() {
         saveWorkItem?.cancel()
-        let state = StoreState(noteText: noteText, updatedAt: updatedAt, clips: clips, floatingFrame: floatingFrame)
+        let state = StoreState(noteText: noteText, updatedAt: updatedAt, clips: clips, windowFrame: windowFrame)
         do {
             let data = try JSONEncoder().encode(state)
             try data.write(to: storeURL)
@@ -205,7 +205,7 @@ final class ScratchpadStore: ObservableObject {
                 noteText = state.noteText
                 updatedAt = state.updatedAt
                 clips = state.clips
-                floatingFrame = state.floatingFrame
+                windowFrame = state.windowFrame
                 lastCapturedClipText = state.clips.first?.content.trimmingCharacters(in: .whitespacesAndNewlines)
                 return
             }
