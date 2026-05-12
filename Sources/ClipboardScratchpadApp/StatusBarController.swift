@@ -12,6 +12,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate, NSWindowDelegate {
     private var eventMonitor: EventMonitor?
     private var activationObserver: NSObjectProtocol?
     private var floatingWindow: FloatingWindow?
+    private var detachedWindow: FloatingWindow?
     private var presentationState = ScratchpadPresentationState()
     private var isResettingWindowFrame = false
 
@@ -76,6 +77,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate, NSWindowDelegate {
 
     @objc private func showPopover(_ sender: AnyObject?) {
         if let button = statusItem.button {
+            discardDetachedWindow()
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: NSRectEdge.minY)
             NSApp.activate(ignoringOtherApps: true)
             applyPopoverLevel()
@@ -102,6 +104,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate, NSWindowDelegate {
             let resolved = resolveFloatingFrame()
             floatingWindow = FloatingWindow(
                 contentRect: resolved,
+                level: .floating,
                 contentView: ContentView().environmentObject(store)
             )
             floatingWindow?.onMove = { [weak self] frame in
@@ -120,7 +123,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate, NSWindowDelegate {
         if shouldAnimate {
             floatingWindow?.alphaValue = 0
         }
-        floatingWindow?.orderFront(nil)
+        floatingWindow?.makeKeyAndOrderFront(nil)
         if shouldAnimate {
             NSAnimationContext.runAnimationGroup { context in
                 context.duration = 0.14
@@ -138,7 +141,9 @@ final class StatusBarController: NSObject, NSPopoverDelegate, NSWindowDelegate {
     private func syncPresentationStateWithAppKit() {
         switch presentationState.mode {
         case .popover:
-            if !popover.isShown {
+            if detachedWindow?.isVisible == true {
+                presentationState.visibility = .visible
+            } else if !popover.isShown {
                 presentationState.visibility = .hidden
             }
         case .floatingWindow:
@@ -169,6 +174,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate, NSWindowDelegate {
         isResettingWindowFrame = true
         store.windowFrame = nil
         floatingWindow?.setFrame(frame, display: true)
+        detachedWindow?.setFrame(frame, display: true)
         popover.contentViewController?.view.window?.setFrame(frame, display: true)
         isResettingWindowFrame = false
         if presentationState.mode == .floatingWindow {
@@ -204,6 +210,9 @@ final class StatusBarController: NSObject, NSPopoverDelegate, NSWindowDelegate {
 
     @objc private func pinChanged(_ notification: Notification) {
         guard let pinned = notification.object as? Bool else { return }
+        if pinned, let detachedWindow, detachedWindow.isVisible {
+            store.windowFrame = detachedWindow.frame
+        }
         if pinned, let window = popover.contentViewController?.view.window, !popover.isShown {
             store.windowFrame = window.frame
         }
@@ -218,12 +227,15 @@ final class StatusBarController: NSObject, NSPopoverDelegate, NSWindowDelegate {
             showPopover(sender)
         case (.popover, .hidden):
             hideFloatingWindow()
+            hideDetachedWindow()
             closePopover(sender)
         case (.floatingWindow, .visible):
             closePopover(nil)
+            hideDetachedWindow()
             showFloatingWindow()
         case (.floatingWindow, .hidden):
             closePopover(nil)
+            hideDetachedWindow()
             hideFloatingWindow()
         }
     }
@@ -232,16 +244,59 @@ final class StatusBarController: NSObject, NSPopoverDelegate, NSWindowDelegate {
         true
     }
 
+    func detachableWindow(for popover: NSPopover) -> NSWindow? {
+        presentationState.popoverDetached()
+        discardDetachedWindow()
+
+        let window = FloatingWindow(
+            contentRect: resolveFloatingFrame(),
+            level: .normal,
+            contentView: ContentView().environmentObject(store)
+        )
+        window.onMove = { [weak self] frame in
+            guard self?.isResettingWindowFrame == false else { return }
+            self?.store.windowFrame = frame
+        }
+        window.onResize = { [weak self] frame in
+            guard self?.isResettingWindowFrame == false else { return }
+            self?.store.windowFrame = frame
+        }
+        window.onClose = { [weak self, weak window] in
+            if self?.detachedWindow === window {
+                self?.detachedWindow = nil
+            }
+            self?.presentationState.windowClosed()
+        }
+        detachedWindow = window
+        store.windowFrame = window.frame
+        eventMonitor?.stop()
+        return window
+    }
+
     func popoverDidDetach(_ popover: NSPopover) {
         presentationState.popoverDetached()
 
         let window = popover.contentViewController?.view.window
         window?.styleMask.insert(.resizable)
         window?.minSize = Self.minimumWindowSize
+        window?.acceptsMouseMovedEvents = true
         window?.delegate = self
         if let frame = window?.frame {
             store.windowFrame = frame
         }
+    }
+
+    private func hideDetachedWindow() {
+        detachedWindow?.orderOut(nil)
+    }
+
+    private func discardDetachedWindow() {
+        guard let window = detachedWindow else { return }
+        if !isResettingWindowFrame {
+            store.windowFrame = window.frame
+        }
+        window.orderOut(nil)
+        detachedWindow = nil
     }
 
     func popoverDidClose(_ notification: Notification) {
@@ -252,13 +307,15 @@ final class StatusBarController: NSObject, NSPopoverDelegate, NSWindowDelegate {
 
     func windowDidMove(_ notification: Notification) {
         guard !isResettingWindowFrame else { return }
-        guard let window = notification.object as? NSWindow, window === popover.contentViewController?.view.window else { return }
+        guard let window = notification.object as? NSWindow else { return }
+        guard window === popover.contentViewController?.view.window || window === detachedWindow else { return }
         store.windowFrame = window.frame
     }
 
     func windowDidResize(_ notification: Notification) {
         guard !isResettingWindowFrame else { return }
-        guard let window = notification.object as? NSWindow, window === popover.contentViewController?.view.window else { return }
+        guard let window = notification.object as? NSWindow else { return }
+        guard window === popover.contentViewController?.view.window || window === detachedWindow else { return }
         store.windowFrame = window.frame
     }
 }

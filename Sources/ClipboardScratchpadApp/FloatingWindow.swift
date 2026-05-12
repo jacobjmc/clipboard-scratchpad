@@ -10,7 +10,11 @@ final class FloatingWindow: NSPanel {
     private let cornerRadius: CGFloat = 14
     private var dragStart: NSPoint = .zero
 
-    init<Content: View>(contentRect: NSRect, contentView: Content) {
+    init<Content: View>(
+        contentRect: NSRect,
+        level: NSWindow.Level = .floating,
+        contentView: Content
+    ) {
         super.init(
             contentRect: contentRect,
             styleMask: [.borderless, .nonactivatingPanel, .utilityWindow, .resizable],
@@ -19,7 +23,7 @@ final class FloatingWindow: NSPanel {
         )
         self.minSize = NSSize(width: 360, height: 320)
         self.isFloatingPanel = true
-        self.level = .floating
+        self.level = level
         self.isMovableByWindowBackground = false
         self.backgroundColor = .clear
         self.hasShadow = true
@@ -36,10 +40,6 @@ final class FloatingWindow: NSPanel {
         shell.material = .popover
         shell.blendingMode = .behindWindow
         shell.state = .active
-        shell.minimumSize = self.minSize
-        shell.onResize = { [weak self] frame in
-            self?.onResize?(frame)
-        }
         shell.wantsLayer = true
         shell.layer?.cornerRadius = cornerRadius
         shell.layer?.cornerCurve = .continuous
@@ -47,6 +47,14 @@ final class FloatingWindow: NSPanel {
         shell.layer?.borderWidth = 1
         shell.layer?.borderColor = NSColor.black.withAlphaComponent(0.35).cgColor
         shell.addSubview(hostingController.view)
+
+        let resizeOverlay = ScratchpadWindowResizeOverlayView(frame: shell.bounds)
+        resizeOverlay.autoresizingMask = [.width, .height]
+        resizeOverlay.minimumSize = self.minSize
+        resizeOverlay.onResize = { [weak self] frame in
+            self?.onResize?(frame)
+        }
+        shell.addSubview(resizeOverlay)
 
         self.contentView = shell
     }
@@ -106,18 +114,26 @@ final class FloatingWindow: NSPanel {
 }
 
 private final class FloatingWindowShellView: NSVisualEffectView {
+}
+
+final class ScratchpadWindowResizeOverlayView: NSView {
     var minimumSize: NSSize = NSSize(width: 360, height: 320)
     var onResize: ((CGRect) -> Void)?
 
     private var resizeStart: NSPoint = .zero
     private var resizeStartFrame: NSRect = .zero
     private var resizeRegion: WindowResizeRegion?
+    private var cursorTrackingAreas: [NSTrackingArea] = []
 
     override func hitTest(_ point: NSPoint) -> NSView? {
         if WindowResizeRegion.region(for: point, contentSize: bounds.size) != nil {
             return self
         }
-        return super.hitTest(point)
+        return nil
+    }
+
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
+        true
     }
 
     override func resetCursorRects() {
@@ -127,6 +143,18 @@ private final class FloatingWindowShellView: NSVisualEffectView {
         addCursorRect(NSRect(x: bounds.width - thickness, y: 0, width: thickness, height: bounds.height), cursor: .resizeLeftRight)
         addCursorRect(NSRect(x: 0, y: 0, width: bounds.width, height: thickness), cursor: .resizeUpDown)
         addCursorRect(NSRect(x: 0, y: bounds.height - thickness, width: bounds.width, height: thickness), cursor: .resizeUpDown)
+    }
+
+    override func cursorUpdate(with event: NSEvent) {
+        updateCursor(for: convert(event.locationInWindow, from: nil))
+    }
+
+    override func mouseMoved(with event: NSEvent) {
+        updateCursor(for: convert(event.locationInWindow, from: nil))
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        NSCursor.arrow.set()
     }
 
     override func mouseDown(with event: NSEvent) {
@@ -169,6 +197,65 @@ private final class FloatingWindowShellView: NSVisualEffectView {
 
     override func updateTrackingAreas() {
         super.updateTrackingAreas()
+        for trackingArea in cursorTrackingAreas {
+            removeTrackingArea(trackingArea)
+        }
+        let cursorTrackingArea = NSTrackingArea(
+            rect: bounds,
+            options: [.activeInActiveApp, .cursorUpdate, .mouseEnteredAndExited, .inVisibleRect],
+            owner: self
+        )
+        let mouseTrackingArea = NSTrackingArea(
+            rect: bounds,
+            options: [.activeAlways, .mouseMoved, .mouseEnteredAndExited, .inVisibleRect],
+            owner: self
+        )
+        addTrackingArea(cursorTrackingArea)
+        addTrackingArea(mouseTrackingArea)
+        cursorTrackingAreas = [cursorTrackingArea, mouseTrackingArea]
         window?.invalidateCursorRects(for: self)
+    }
+
+    private func updateCursor(for point: NSPoint) {
+        guard let region = WindowResizeRegion.region(for: point, contentSize: bounds.size) else {
+            NSCursor.arrow.set()
+            return
+        }
+        cursor(for: region).set()
+    }
+
+    private func cursor(for region: WindowResizeRegion) -> NSCursor {
+        if #available(macOS 15.0, *) {
+            return NSCursor.frameResize(
+                position: cursorPosition(for: region),
+                directions: .all
+            )
+        }
+        if region.contains(.left) || region.contains(.right) {
+            return .resizeLeftRight
+        }
+        return .resizeUpDown
+    }
+
+    @available(macOS 15.0, *)
+    private func cursorPosition(for region: WindowResizeRegion) -> NSCursor.FrameResizePosition {
+        switch (region.contains(.left), region.contains(.right), region.contains(.top), region.contains(.bottom)) {
+        case (true, false, true, false):
+            return .topLeft
+        case (false, true, true, false):
+            return .topRight
+        case (true, false, false, true):
+            return .bottomLeft
+        case (false, true, false, true):
+            return .bottomRight
+        case (true, false, false, false):
+            return .left
+        case (false, true, false, false):
+            return .right
+        case (false, false, true, false):
+            return .top
+        default:
+            return .bottom
+        }
     }
 }
