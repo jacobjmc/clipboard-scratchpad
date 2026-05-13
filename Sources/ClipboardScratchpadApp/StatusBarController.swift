@@ -48,6 +48,12 @@ final class StatusBarController: NSObject, NSPopoverDelegate, NSWindowDelegate {
             name: .scratchpadPinChanged,
             object: nil
         )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(closeRequested),
+            name: .scratchpadCloseRequested,
+            object: nil
+        )
 
         activationObserver = NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didActivateApplicationNotification,
@@ -225,6 +231,12 @@ final class StatusBarController: NSObject, NSPopoverDelegate, NSWindowDelegate {
             store.windowFrame = window.frame
         }
         presentationState.pinChanged(isPinned: pinned)
+        applyPresentationState(nil)
+    }
+
+    @objc private func closeRequested() {
+        syncPresentationStateWithAppKit()
+        presentationState.windowClosed()
         applyPresentationState(nil)
     }
 

@@ -6,6 +6,7 @@ extension Notification.Name {
     static let scratchpadInsertText = Notification.Name("scratchpadInsertText")
     static let scratchpadClearText = Notification.Name("scratchpadClearText")
     static let scratchpadPinChanged = Notification.Name("scratchpadPinChanged")
+    static let scratchpadCloseRequested = Notification.Name("scratchpadCloseRequested")
 }
 
 struct PlainTextView: NSViewRepresentable {

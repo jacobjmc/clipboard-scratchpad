@@ -21,6 +21,19 @@ struct ContentView: View {
             }
 
             HStack {
+                Button {
+                    NotificationCenter.default.post(name: .scratchpadCloseRequested, object: nil)
+                } label: {
+                    Image(systemName: "xmark.circle")
+                        .font(.body)
+                        .frame(width: 30, height: 30)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .foregroundColor(.secondary)
+                .help("Close")
+                .accessibilityLabel("Close window")
+
                 Spacer()
 
                 HStack(spacing: 16) {
