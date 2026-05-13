@@ -70,6 +70,10 @@ final class StatusBarController: NSObject, NSPopoverDelegate, NSWindowDelegate {
             showStatusMenu()
             return
         }
+        if presentationState.mode == .popover, detachedWindow?.isVisible == true {
+            bringDetachedWindowForward()
+            return
+        }
         syncPresentationStateWithAppKit()
         presentationState.menuBarItemClicked()
         applyPresentationState(sender)
@@ -295,6 +299,13 @@ final class StatusBarController: NSObject, NSPopoverDelegate, NSWindowDelegate {
             store.windowFrame = detachedWindow.frame
         }
         detachedWindow?.orderOut(nil)
+    }
+
+    private func bringDetachedWindowForward() {
+        guard let detachedWindow else { return }
+        NSApp.activate(ignoringOtherApps: true)
+        detachedWindow.makeKeyAndOrderFront(nil)
+        detachedWindow.orderFrontRegardless()
     }
 
     private func discardDetachedWindow() {
