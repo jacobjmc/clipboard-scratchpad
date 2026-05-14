@@ -15,6 +15,20 @@ final class StoreStateTests: XCTestCase {
         XCTAssertEqual(state.noteText, "Hello")
         XCTAssertEqual(state.clips.count, 0)
         XCTAssertNil(state.windowFrame)
+        XCTAssertNil(state.globalShortcut)
+    }
+
+    func testRoundTripsWithGlobalShortcut() throws {
+        let state = StoreState(
+            noteText: "Hello",
+            clips: [],
+            globalShortcut: GlobalKeyboardShortcut(keyCode: 49, modifiers: [.command, .shift])
+        )
+
+        let data = try JSONEncoder().encode(state)
+        let decoded = try JSONDecoder().decode(StoreState.self, from: data)
+
+        XCTAssertEqual(decoded.globalShortcut, GlobalKeyboardShortcut(keyCode: 49, modifiers: [.command, .shift]))
     }
 
     func testRoundTripsWithWindowFrame() throws {

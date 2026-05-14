@@ -190,9 +190,10 @@ private struct VisualEffectBar: NSViewRepresentable {
 private struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var store: ScratchpadStore
+    @State private var shortcutStatus: String?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 14) {
             HStack {
                 Text("Settings")
                     .font(.system(size: 16, weight: .semibold))
@@ -212,20 +213,49 @@ private struct SettingsView: View {
 
             Divider()
 
-            HStack(alignment: .center, spacing: 12) {
-                Image(systemName: store.isAccessibilityTrusted ? "checkmark.circle.fill" : "exclamationmark.circle")
-                    .foregroundColor(store.isAccessibilityTrusted ? .green : .secondary)
+            SettingsRow(
+                systemSymbolName: "keyboard",
+                title: "Global Shortcut",
+                subtitle: "Show Clipboard Scratchpad while the app is open.",
+                status: statusText
+            ) {
+                HStack(spacing: 8) {
+                    ShortcutRecorderButton(
+                        shortcut: store.globalShortcut,
+                        onAssign: { shortcut in
+                            shortcutStatus = nil
+                            NotificationCenter.default.post(
+                                name: .scratchpadGlobalShortcutAssignRequested,
+                                object: shortcut
+                            )
+                        },
+                        onClear: {
+                            shortcutStatus = nil
+                            NotificationCenter.default.post(name: .scratchpadGlobalShortcutClearRequested, object: nil)
+                        },
+                        onInvalid: {
+                            shortcutStatus = "Shortcut unavailable"
+                        }
+                    )
+                    .frame(width: 118, height: 28)
 
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("Accessibility")
-                        .font(.system(size: 13, weight: .semibold))
-                    Text(store.isAccessibilityTrusted ? "Enabled" : "Required for paste actions")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(.secondary)
+                    Button("Clear") {
+                        shortcutStatus = nil
+                        NotificationCenter.default.post(name: .scratchpadGlobalShortcutClearRequested, object: nil)
+                    }
+                    .controlSize(.small)
+                    .disabled(store.globalShortcut == nil)
                 }
+            }
 
-                Spacer()
+            Divider()
 
+            SettingsRow(
+                systemSymbolName: store.isAccessibilityTrusted ? "checkmark.circle.fill" : "exclamationmark.circle",
+                iconColor: store.isAccessibilityTrusted ? .green : .secondary,
+                title: "Accessibility",
+                subtitle: store.isAccessibilityTrusted ? "Enabled" : "Required for paste actions"
+            ) {
                 Button(store.isAccessibilityTrusted ? "Refresh" : "Enable") {
                     if store.isAccessibilityTrusted {
                         store.refreshAccessibilityStatus()
@@ -237,11 +267,186 @@ private struct SettingsView: View {
             }
         }
         .padding(18)
-        .frame(width: 360)
+        .frame(width: 430)
         .presentationCompactAdaptation(.popover)
         .onAppear {
             store.refreshAccessibilityStatus()
         }
+    }
+
+    private var statusText: String? {
+        if store.globalShortcutUnavailable {
+            return "Shortcut unavailable"
+        }
+        return shortcutStatus
+    }
+}
+
+private struct SettingsRow<Accessory: View>: View {
+    let systemSymbolName: String
+    var iconColor: Color = .secondary
+    let title: String
+    let subtitle: String
+    var status: String?
+    @ViewBuilder let accessory: Accessory
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 12) {
+            Image(systemName: systemSymbolName)
+                .frame(width: 18)
+                .foregroundColor(iconColor)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.system(size: 13, weight: .semibold))
+                Text(subtitle)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.secondary)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let status {
+                    Text(status)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            accessory
+        }
+        .frame(minHeight: 46)
+    }
+}
+
+private struct ShortcutRecorderButton: NSViewRepresentable {
+    let shortcut: GlobalKeyboardShortcut?
+    let onAssign: (GlobalKeyboardShortcut) -> Void
+    let onClear: () -> Void
+    let onInvalid: () -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(parent: self)
+    }
+
+    func makeNSView(context: Context) -> ShortcutRecorderNSButton {
+        let button = ShortcutRecorderNSButton()
+        button.bezelStyle = .rounded
+        button.controlSize = .small
+        button.font = .systemFont(ofSize: 12, weight: .medium)
+        button.target = context.coordinator
+        button.action = #selector(Coordinator.beginRecording)
+        context.coordinator.button = button
+        updateNSView(button, context: context)
+        return button
+    }
+
+    func updateNSView(_ button: ShortcutRecorderNSButton, context: Context) {
+        context.coordinator.parent = self
+        button.shortcut = shortcut
+        button.onAssign = onAssign
+        button.onClear = onClear
+        button.onInvalid = onInvalid
+        button.updateTitle()
+    }
+
+    final class Coordinator: NSObject {
+        var parent: ShortcutRecorderButton
+        weak var button: ShortcutRecorderNSButton?
+
+        init(parent: ShortcutRecorderButton) {
+            self.parent = parent
+        }
+
+        @objc func beginRecording() {
+            button?.beginRecording()
+        }
+    }
+}
+
+private final class ShortcutRecorderNSButton: NSButton {
+    var shortcut: GlobalKeyboardShortcut?
+    var onAssign: ((GlobalKeyboardShortcut) -> Void)?
+    var onClear: (() -> Void)?
+    var onInvalid: (() -> Void)?
+
+    private var isRecording = false
+
+    override var acceptsFirstResponder: Bool {
+        true
+    }
+
+    func beginRecording() {
+        isRecording = true
+        updateTitle()
+        window?.makeFirstResponder(self)
+    }
+
+    func updateTitle() {
+        if isRecording {
+            title = "Press shortcut"
+        } else {
+            title = shortcut?.displayString ?? "None"
+        }
+    }
+
+    override func keyDown(with event: NSEvent) {
+        guard isRecording else {
+            super.keyDown(with: event)
+            return
+        }
+
+        switch event.keyCode {
+        case 53:
+            isRecording = false
+            updateTitle()
+        case 51, 117:
+            isRecording = false
+            shortcut = nil
+            updateTitle()
+            onClear?()
+        default:
+            let recorded = GlobalKeyboardShortcut(
+                keyCode: event.keyCode,
+                modifiers: GlobalKeyboardShortcut.Modifiers(event.modifierFlags)
+            )
+            guard recorded.validationError == nil else {
+                NSSound.beep()
+                onInvalid?()
+                return
+            }
+            isRecording = false
+            shortcut = recorded
+            updateTitle()
+            onAssign?(recorded)
+        }
+    }
+
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        guard isRecording else {
+            return super.performKeyEquivalent(with: event)
+        }
+        keyDown(with: event)
+        return true
+    }
+}
+
+private extension GlobalKeyboardShortcut.Modifiers {
+    init(_ eventFlags: NSEvent.ModifierFlags) {
+        var modifiers: GlobalKeyboardShortcut.Modifiers = []
+        let flags = eventFlags.intersection(.deviceIndependentFlagsMask)
+        if flags.contains(.command) {
+            modifiers.insert(.command)
+        }
+        if flags.contains(.option) {
+            modifiers.insert(.option)
+        }
+        if flags.contains(.control) {
+            modifiers.insert(.control)
+        }
+        if flags.contains(.shift) {
+            modifiers.insert(.shift)
+        }
+        self = modifiers
     }
 }
 

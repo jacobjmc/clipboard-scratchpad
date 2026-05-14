@@ -17,6 +17,8 @@ final class ScratchpadStore: ObservableObject {
             }
         }
     }
+    @Published var globalShortcut: GlobalKeyboardShortcut? = nil
+    @Published var globalShortcutUnavailable: Bool = false
     @Published var isAccessibilityTrusted: Bool = AXIsProcessTrusted()
     @Published var isPinned: Bool = false {
         didSet {
@@ -186,7 +188,13 @@ final class ScratchpadStore: ObservableObject {
 
     private func saveImmediately() {
         saveWorkItem?.cancel()
-        let state = StoreState(noteText: noteText, updatedAt: updatedAt, clips: clips, windowFrame: windowFrame)
+        let state = StoreState(
+            noteText: noteText,
+            updatedAt: updatedAt,
+            clips: clips,
+            windowFrame: windowFrame,
+            globalShortcut: globalShortcut
+        )
         do {
             let data = try JSONEncoder().encode(state)
             try data.write(to: storeURL)
@@ -206,6 +214,7 @@ final class ScratchpadStore: ObservableObject {
                 updatedAt = state.updatedAt
                 clips = state.clips
                 windowFrame = state.windowFrame
+                globalShortcut = state.globalShortcut
                 lastCapturedClipText = state.clips.first?.content.trimmingCharacters(in: .whitespacesAndNewlines)
                 return
             }
@@ -217,6 +226,22 @@ final class ScratchpadStore: ObservableObject {
         }
         noteText = ""
         clips = []
+    }
+
+    func globalShortcutDidRegister(_ shortcut: GlobalKeyboardShortcut) {
+        globalShortcut = shortcut
+        globalShortcutUnavailable = false
+        saveImmediately()
+    }
+
+    func globalShortcutDidFail() {
+        globalShortcutUnavailable = true
+    }
+
+    func globalShortcutDidClear() {
+        globalShortcut = nil
+        globalShortcutUnavailable = false
+        saveImmediately()
     }
 
     private func migrate(legacyBlocks: [LegacyScratchBlock]) {

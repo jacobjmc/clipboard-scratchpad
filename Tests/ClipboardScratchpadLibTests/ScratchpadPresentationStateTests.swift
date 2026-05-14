@@ -12,6 +12,16 @@ final class ScratchpadPresentationStateTests: XCTestCase {
         XCTAssertEqual(state, ScratchpadPresentationState(mode: .popover, visibility: .hidden))
     }
 
+    func testHotKeyShowsAndHidesVisibleSurface() {
+        var state = ScratchpadPresentationState()
+
+        state.hotKeyPressed()
+        XCTAssertEqual(state, ScratchpadPresentationState(mode: .popover, visibility: .visible))
+
+        state.hotKeyPressed()
+        XCTAssertEqual(state, ScratchpadPresentationState(mode: .popover, visibility: .hidden))
+    }
+
     func testPinningShowsFloatingWindowAndHidesPopoverMode() {
         var state = ScratchpadPresentationState(mode: .popover, visibility: .visible)
 

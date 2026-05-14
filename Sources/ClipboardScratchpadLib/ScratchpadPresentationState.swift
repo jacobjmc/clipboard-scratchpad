@@ -21,6 +21,10 @@ public struct ScratchpadPresentationState: Equatable {
         visibility = visibility == .visible ? .hidden : .visible
     }
 
+    public mutating func hotKeyPressed() {
+        visibility = visibility == .visible ? .hidden : .visible
+    }
+
     public mutating func pinChanged(isPinned: Bool) {
         mode = isPinned ? .floatingWindow : .popover
         visibility = .visible

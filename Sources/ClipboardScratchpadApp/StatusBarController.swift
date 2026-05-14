@@ -13,6 +13,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate, NSWindowDelegate {
     private var activationObserver: NSObjectProtocol?
     private var floatingWindow: FloatingWindow?
     private var detachedWindow: FloatingWindow?
+    private var hotKeyController: GlobalHotKeyController?
     private var presentationState = ScratchpadPresentationState()
     private var isResettingWindowFrame = false
 
@@ -54,6 +55,35 @@ final class StatusBarController: NSObject, NSPopoverDelegate, NSWindowDelegate {
             name: .scratchpadCloseRequested,
             object: nil
         )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(globalShortcutAssignRequested(_:)),
+            name: .scratchpadGlobalShortcutAssignRequested,
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(globalShortcutClearRequested),
+            name: .scratchpadGlobalShortcutClearRequested,
+            object: nil
+        )
+
+        let registrar = CarbonHotKeyRegistrar { [weak self] in
+            DispatchQueue.main.async {
+                self?.globalShortcutTriggered()
+            }
+        }
+        hotKeyController = GlobalHotKeyController(savedShortcut: store.globalShortcut, registrar: registrar)
+        switch hotKeyController?.restoreSavedShortcut() {
+        case .registered:
+            if let shortcut = hotKeyController?.savedShortcut {
+                store.globalShortcutDidRegister(shortcut)
+            }
+        case .unavailable:
+            store.globalShortcutDidFail()
+        default:
+            break
+        }
 
         activationObserver = NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didActivateApplicationNotification,
@@ -237,6 +267,35 @@ final class StatusBarController: NSObject, NSPopoverDelegate, NSWindowDelegate {
     @objc private func closeRequested() {
         syncPresentationStateWithAppKit()
         presentationState.windowClosed()
+        applyPresentationState(nil)
+    }
+
+    @objc private func globalShortcutAssignRequested(_ notification: Notification) {
+        guard let shortcut = notification.object as? GlobalKeyboardShortcut else { return }
+        switch hotKeyController?.assign(shortcut) {
+        case .registered:
+            store.globalShortcutDidRegister(shortcut)
+        case .unavailable:
+            store.globalShortcutDidFail()
+        case .invalid:
+            store.globalShortcutDidFail()
+        default:
+            break
+        }
+    }
+
+    @objc private func globalShortcutClearRequested() {
+        hotKeyController?.clear()
+        store.globalShortcutDidClear()
+    }
+
+    private func globalShortcutTriggered() {
+        if presentationState.mode == .popover, detachedWindow?.isVisible == true {
+            bringDetachedWindowForward()
+            return
+        }
+        syncPresentationStateWithAppKit()
+        presentationState.hotKeyPressed()
         applyPresentationState(nil)
     }
 
