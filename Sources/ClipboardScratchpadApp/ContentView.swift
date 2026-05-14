@@ -75,7 +75,7 @@ struct ContentView: View {
 
             if isShowingClips {
                 VSplitView {
-                    PlainTextView(text: $store.noteText) {
+                    PlainTextView(text: $store.noteText, paperFinishEnabled: store.paperFinishEnabled) {
                         store.noteDidChange()
                     }
                     .frame(minHeight: 96)
@@ -98,7 +98,7 @@ struct ContentView: View {
                 .frame(maxHeight: .infinity)
                 Divider()
             } else {
-                PlainTextView(text: $store.noteText) {
+                PlainTextView(text: $store.noteText, paperFinishEnabled: store.paperFinishEnabled) {
                     store.noteDidChange()
                 }
                 Divider()
@@ -231,6 +231,18 @@ private struct SettingsView: View {
                 .labelsHidden()
                 .pickerStyle(.segmented)
                 .frame(width: 204)
+            }
+
+            Divider()
+
+            SettingsRow(
+                systemSymbolName: "doc.plaintext",
+                title: "Paper Finish",
+                subtitle: "Add a subtle matte texture to the note."
+            ) {
+                Toggle("", isOn: $store.paperFinishEnabled)
+                    .labelsHidden()
+                    .toggleStyle(.switch)
             }
 
             Divider()

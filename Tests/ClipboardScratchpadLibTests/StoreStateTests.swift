@@ -17,6 +17,20 @@ final class StoreStateTests: XCTestCase {
         XCTAssertNil(state.windowFrame)
         XCTAssertNil(state.globalShortcut)
         XCTAssertEqual(state.appearancePreference, .system)
+        XCTAssertTrue(state.paperFinishEnabled)
+    }
+
+    func testRoundTripsWithPaperFinishDisabled() throws {
+        let state = StoreState(
+            noteText: "Hello",
+            clips: [],
+            paperFinishEnabled: false
+        )
+
+        let data = try JSONEncoder().encode(state)
+        let decoded = try JSONDecoder().decode(StoreState.self, from: data)
+
+        XCTAssertFalse(decoded.paperFinishEnabled)
     }
 
     func testRoundTripsWithAppearancePreference() throws {

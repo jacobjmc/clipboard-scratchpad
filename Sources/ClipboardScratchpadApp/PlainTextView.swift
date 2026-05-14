@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import ClipboardScratchpadLib
 
 extension Notification.Name {
     static let scratchpadPopoverDidShow = Notification.Name("scratchpadPopoverDidShow")
@@ -13,9 +14,11 @@ extension Notification.Name {
 
 struct PlainTextView: NSViewRepresentable {
     @Binding var text: String
+    var paperFinishEnabled: Bool
     var onTextChange: () -> Void
 
-    func makeNSView(context: Context) -> NSScrollView {
+    func makeNSView(context: Context) -> PaperTextContainerView {
+        let containerView = PaperTextContainerView(frame: .zero)
         let scrollView = NSScrollView()
         scrollView.hasVerticalScroller = true
         scrollView.autohidesScrollers = true
@@ -54,18 +57,23 @@ struct PlainTextView: NSViewRepresentable {
         textView.delegate = context.coordinator
 
         scrollView.documentView = textView
+        containerView.scrollView = scrollView
+        containerView.addSubview(scrollView)
         context.coordinator.textView = textView
 
         textView.string = text
         context.coordinator.lastSyncedText = text
+        applyPaperFinish(to: containerView, scrollView: scrollView, textView: textView)
 
-        return scrollView
+        return containerView
     }
 
-    func updateNSView(_ scrollView: NSScrollView, context: Context) {
+    func updateNSView(_ containerView: PaperTextContainerView, context: Context) {
         context.coordinator.parent = self
 
+        guard let scrollView = containerView.scrollView else { return }
         guard let textView = scrollView.documentView as? PlainTextNSTextView else { return }
+        applyPaperFinish(to: containerView, scrollView: scrollView, textView: textView)
 
         // The text view is the source of truth when it already has the text.
         // Skip sync to avoid loops and preserve undo history.
@@ -85,6 +93,17 @@ struct PlainTextView: NSViewRepresentable {
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
+    }
+
+    private func applyPaperFinish(
+        to containerView: PaperTextContainerView,
+        scrollView: NSScrollView,
+        textView: PlainTextNSTextView
+    ) {
+        containerView.paperFinishEnabled = paperFinishEnabled
+        scrollView.drawsBackground = !paperFinishEnabled
+        textView.drawsBackground = !paperFinishEnabled
+        textView.backgroundColor = paperFinishEnabled ? .clear : .textBackgroundColor
     }
 
     final class Coordinator: NSObject, NSTextViewDelegate {
@@ -212,6 +231,115 @@ struct PlainTextView: NSViewRepresentable {
                 textView.breakUndoCoalescing()
             }
         }
+    }
+}
+
+final class PaperTextContainerView: NSView {
+    weak var scrollView: NSScrollView?
+    var paperFinishEnabled: Bool = true {
+        didSet {
+            needsDisplay = true
+        }
+    }
+
+    private static var lightImage: NSImage?
+    private static var darkImage: NSImage?
+
+    override var isFlipped: Bool {
+        true
+    }
+
+    override func layout() {
+        super.layout()
+        scrollView?.frame = bounds
+    }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        needsDisplay = true
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        guard paperFinishEnabled else {
+            super.draw(dirtyRect)
+            return
+        }
+
+        let appearance = isDarkAppearance ? PaperTexture.Appearance.dark : .light
+        let base = appearance.baseColor
+        NSColor(
+            calibratedRed: base.red,
+            green: base.green,
+            blue: base.blue,
+            alpha: 1
+        ).setFill()
+        dirtyRect.fill()
+
+        NSColor(patternImage: Self.image(for: appearance)).setFill()
+        dirtyRect.fill()
+    }
+
+    private var isDarkAppearance: Bool {
+        let bestMatch = effectiveAppearance.bestMatch(from: [.darkAqua, .aqua])
+        return bestMatch == .darkAqua
+    }
+
+    private static func image(for appearance: PaperTexture.Appearance) -> NSImage {
+        switch appearance {
+        case .light:
+            if let lightImage {
+                return lightImage
+            }
+            let image = makeImage(appearance: appearance)
+            lightImage = image
+            return image
+        case .dark:
+            if let darkImage {
+                return darkImage
+            }
+            let image = makeImage(appearance: appearance)
+            darkImage = image
+            return image
+        }
+    }
+
+    private static func makeImage(appearance: PaperTexture.Appearance) -> NSImage {
+        let size = 512
+        let bytesPerPixel = 4
+        let bytesPerRow = size * bytesPerPixel
+        var pixels = [UInt8](repeating: 255, count: size * bytesPerRow)
+
+        for y in 0..<size {
+            for x in 0..<size {
+                let sample = PaperTexture.sample(appearance: appearance, x: x, y: y)
+                let offset = y * bytesPerRow + x * bytesPerPixel
+                pixels[offset] = UInt8(clamping: Int(sample.red * 255))
+                pixels[offset + 1] = UInt8(clamping: Int(sample.green * 255))
+                pixels[offset + 2] = UInt8(clamping: Int(sample.blue * 255))
+                pixels[offset + 3] = 255
+            }
+        }
+
+        let data = Data(pixels)
+        guard let provider = CGDataProvider(data: data as CFData),
+              let cgImage = CGImage(
+                width: size,
+                height: size,
+                bitsPerComponent: 8,
+                bitsPerPixel: 32,
+                bytesPerRow: bytesPerRow,
+                space: CGColorSpaceCreateDeviceRGB(),
+                bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.last.rawValue),
+                provider: provider,
+                decode: nil,
+                shouldInterpolate: false,
+                intent: .defaultIntent
+              )
+        else {
+            return NSImage(size: NSSize(width: size, height: size))
+        }
+
+        return NSImage(cgImage: cgImage, size: NSSize(width: size, height: size))
     }
 }
 

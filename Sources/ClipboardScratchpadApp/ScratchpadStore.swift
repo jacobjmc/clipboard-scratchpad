@@ -26,6 +26,12 @@ final class ScratchpadStore: ObservableObject {
             saveImmediately()
         }
     }
+    @Published var paperFinishEnabled: Bool = true {
+        didSet {
+            guard paperFinishEnabled != oldValue else { return }
+            saveImmediately()
+        }
+    }
     @Published var isAccessibilityTrusted: Bool = AXIsProcessTrusted()
     @Published var isPinned: Bool = false {
         didSet {
@@ -202,7 +208,8 @@ final class ScratchpadStore: ObservableObject {
             clips: clips,
             windowFrame: windowFrame,
             globalShortcut: globalShortcut,
-            appearancePreference: appearancePreference
+            appearancePreference: appearancePreference,
+            paperFinishEnabled: paperFinishEnabled
         )
         do {
             let data = try JSONEncoder().encode(state)
@@ -225,6 +232,7 @@ final class ScratchpadStore: ObservableObject {
                 windowFrame = state.windowFrame
                 globalShortcut = state.globalShortcut
                 appearancePreference = state.appearancePreference
+                paperFinishEnabled = state.paperFinishEnabled
                 lastCapturedClipText = state.clips.first?.content.trimmingCharacters(in: .whitespacesAndNewlines)
                 return
             }

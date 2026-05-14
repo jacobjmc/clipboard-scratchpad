@@ -56,6 +56,25 @@ The product should stay local-first, fast, and single-purpose. It should not bec
 - The footer shows line, word, character, and last-updated metadata.
 - Scratchpad text and clips persist as JSON in Application Support.
 
+## Language
+
+**Paper finish**:
+A subtle matte texture applied only to the editable scratchpad editor surface, controlled by a Settings toggle.
+_Avoid_: applying paper texture to header, footer, settings, clip shelf, or other app chrome.
+
+**Paper Finish setting**:
+A persisted Settings preference that defaults on and controls whether the editable scratchpad editor surface uses the paper finish. In Settings, it appears directly under Appearance, titled `Paper Finish`, with the description `Add a subtle matte texture to the note.`
+When off, the editor uses the native text view background.
+_Avoid_: temporary per-window state, intensity controls, texture style choices, or a second custom flat editor theme.
+
+**Dark paper finish**:
+The dark-mode version of paper finish, using a warm charcoal editor surface with very low-contrast grain.
+_Avoid_: beige paper in dark mode, bright speckles, or a texture so strong that it reads as visual noise.
+
+**Paper finish scope**:
+Paper finish changes only the editor background surface, including when the editor appears above the Clip Shelf drawer, not text styling or editing behavior.
+_Avoid_: extending paper finish into the Clip Shelf, split divider, custom fonts, custom selection colors, cursor changes, line-spacing changes, or undo/text-input changes for the paper finish.
+
 ## Current Non-Goals
 
 - No iOS or cross-platform version.
@@ -107,6 +126,7 @@ The product should stay local-first, fast, and single-purpose. It should not bec
 - `ScratchpadStore` owns scratchpad state, clip state, persistence, and clipboard monitor wiring.
 - `ClipboardMonitor` polls `NSPasteboard` on the main thread.
 - `StoreState` is the current persisted Codable shape.
+- Paper finish should use a small deterministic in-process texture generator with a fixed seed. Cache one fixed pixel-size tiled bitmap per light/dark appearance; do not regenerate texture for window size or display scale. Do not add bundled texture assets or external dependencies for it.
 
 ## Persistence
 
