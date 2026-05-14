@@ -80,12 +80,12 @@ struct ContentView: View {
             }
 
             if isShowingClips {
-                VSplitView {
+                ClipShelfSplitView(editor: {
                     PlainTextView(text: $store.noteText, paperFinishEnabled: store.paperFinishEnabled) {
                         store.noteDidChange()
                     }
                     .frame(minHeight: 96)
-
+                }, shelf: {
                     ClipShelfDrawer(
                         clips: store.clips,
                         previousAppName: store.previousExternalAppName,
@@ -100,7 +100,7 @@ struct ContentView: View {
                         onCollapse: { isShowingClips = false }
                     )
                     .frame(minHeight: 104, idealHeight: 220)
-                }
+                })
                 .frame(maxHeight: .infinity)
             } else {
                 PlainTextView(text: $store.noteText, paperFinishEnabled: store.paperFinishEnabled) {
@@ -177,6 +177,164 @@ struct ContentView: View {
         } message: {
             Text("This will remove all content. This cannot be undone.")
         }
+    }
+}
+
+private struct ClipShelfSplitView<Editor: View, Shelf: View>: NSViewRepresentable {
+    let editor: Editor
+    let shelf: Shelf
+
+    init(
+        @ViewBuilder editor: () -> Editor,
+        @ViewBuilder shelf: () -> Shelf
+    ) {
+        self.editor = editor()
+        self.shelf = shelf()
+    }
+
+    func makeNSView(context: Context) -> ClipShelfNSSplitView {
+        let splitView = ClipShelfNSSplitView()
+        splitView.isVertical = false
+        splitView.dividerStyle = .thin
+
+        let editorView = NSHostingView(rootView: AnyView(editor))
+        let shelfView = NSHostingView(rootView: AnyView(shelf))
+        editorView.autoresizingMask = [.width, .height]
+        shelfView.autoresizingMask = [.width, .height]
+
+        splitView.addArrangedSubview(editorView)
+        splitView.addArrangedSubview(shelfView)
+        context.coordinator.editorView = editorView
+        context.coordinator.shelfView = shelfView
+        return splitView
+    }
+
+    func updateNSView(_ splitView: ClipShelfNSSplitView, context: Context) {
+        context.coordinator.editorView?.rootView = AnyView(editor)
+        context.coordinator.shelfView?.rootView = AnyView(shelf)
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
+    final class Coordinator {
+        weak var editorView: NSHostingView<AnyView>?
+        weak var shelfView: NSHostingView<AnyView>?
+    }
+}
+
+private final class ClipShelfNSSplitView: NSSplitView {
+    private let dividerHitOutset: CGFloat = 16
+    private let preferredShelfHeight: CGFloat = 220
+    private let minimumEditorHeight: CGFloat = 96
+    private let minimumShelfHeight: CGFloat = 104
+    private var didSetInitialDivider = false
+    private var isDraggingDivider = false
+    private var trackingArea: NSTrackingArea?
+
+    override var dividerThickness: CGFloat {
+        1
+    }
+
+    override func layout() {
+        super.layout()
+        guard !didSetInitialDivider, arrangedSubviews.count == 2 else { return }
+        let dividerPosition = max(
+            minimumEditorHeight,
+            bounds.height - preferredShelfHeight - dividerThickness
+        )
+        setPosition(dividerPosition, ofDividerAt: 0)
+        didSetInitialDivider = true
+    }
+
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        if expandedDividerRect.contains(point) {
+            return self
+        }
+        return super.hitTest(point)
+    }
+
+    override func resetCursorRects() {
+        super.resetCursorRects()
+        addCursorRect(expandedDividerRect, cursor: .resizeUpDown)
+    }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let trackingArea {
+            removeTrackingArea(trackingArea)
+        }
+        let area = NSTrackingArea(
+            rect: bounds,
+            options: [.mouseMoved, .mouseEnteredAndExited, .activeAlways, .inVisibleRect],
+            owner: self
+        )
+        addTrackingArea(area)
+        trackingArea = area
+    }
+
+    override func mouseMoved(with event: NSEvent) {
+        let point = convert(event.locationInWindow, from: nil)
+        if expandedDividerRect.contains(point) {
+            NSCursor.resizeUpDown.set()
+        } else {
+            NSCursor.arrow.set()
+        }
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        let point = convert(event.locationInWindow, from: nil)
+        guard expandedDividerRect.contains(point) else {
+            super.mouseDown(with: event)
+            return
+        }
+        isDraggingDivider = true
+    }
+
+    override func mouseDragged(with event: NSEvent) {
+        guard isDraggingDivider else {
+            super.mouseDragged(with: event)
+            return
+        }
+        let point = convert(event.locationInWindow, from: nil)
+        setPosition(constrainedDividerPosition(point.y), ofDividerAt: 0)
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        isDraggingDivider = false
+        super.mouseUp(with: event)
+    }
+
+    override func drawDivider(in rect: NSRect) {
+        NSColor.separatorColor.withAlphaComponent(0.65).setFill()
+        NSRect(
+            x: rect.minX,
+            y: rect.midY - 0.5,
+            width: rect.width,
+            height: 1
+        ).fill()
+    }
+
+    private var expandedDividerRect: NSRect {
+        guard arrangedSubviews.count == 2 else { return .zero }
+        return dividerRect.insetBy(dx: 0, dy: -dividerHitOutset)
+    }
+
+    private var dividerRect: NSRect {
+        guard arrangedSubviews.count == 2 else { return .zero }
+        let firstSubview = arrangedSubviews[0]
+        return NSRect(
+            x: bounds.minX,
+            y: firstSubview.frame.maxY,
+            width: bounds.width,
+            height: dividerThickness
+        )
+    }
+
+    private func constrainedDividerPosition(_ position: CGFloat) -> CGFloat {
+        let maxPosition = bounds.height - minimumShelfHeight - dividerThickness
+        return min(max(position, minimumEditorHeight), maxPosition)
     }
 }
 
