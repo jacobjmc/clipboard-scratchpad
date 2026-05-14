@@ -192,24 +192,20 @@ private struct ClipShelfSplitView<Editor: View, Shelf: View>: NSViewRepresentabl
         self.shelf = shelf()
     }
 
-    func makeNSView(context: Context) -> ClipShelfNSSplitView {
-        let splitView = ClipShelfNSSplitView()
-        splitView.isVertical = false
-        splitView.dividerStyle = .thin
-
+    func makeNSView(context: Context) -> ClipShelfSplitContainerView {
+        let splitView = ClipShelfSplitContainerView()
         let editorView = NSHostingView(rootView: AnyView(editor))
         let shelfView = NSHostingView(rootView: AnyView(shelf))
         editorView.autoresizingMask = [.width, .height]
         shelfView.autoresizingMask = [.width, .height]
 
-        splitView.addArrangedSubview(editorView)
-        splitView.addArrangedSubview(shelfView)
+        splitView.setContentViews(editorView: editorView, shelfView: shelfView)
         context.coordinator.editorView = editorView
         context.coordinator.shelfView = shelfView
         return splitView
     }
 
-    func updateNSView(_ splitView: ClipShelfNSSplitView, context: Context) {
+    func updateNSView(_ splitView: ClipShelfSplitContainerView, context: Context) {
         context.coordinator.editorView?.rootView = AnyView(editor)
         context.coordinator.shelfView?.rootView = AnyView(shelf)
     }
@@ -224,30 +220,39 @@ private struct ClipShelfSplitView<Editor: View, Shelf: View>: NSViewRepresentabl
     }
 }
 
-private final class ClipShelfNSSplitView: NSSplitView {
-    private let dividerHitOutset: CGFloat = 16
+private final class ClipShelfSplitContainerView: NSView {
+    private let dividerHitOutsetAbove: CGFloat = 18
+    private let dividerHitOutsetBelow: CGFloat = 4
+    private let trailingScrollerWidth: CGFloat = 72
     private let preferredShelfHeight: CGFloat = 220
     private let minimumEditorHeight: CGFloat = 96
     private let minimumShelfHeight: CGFloat = 104
-    private var didSetInitialDivider = false
+    private let dividerThickness: CGFloat = 1
+
+    private weak var editorView: NSView?
+    private weak var shelfView: NSView?
+    private var dividerPosition: CGFloat?
     private var isDraggingDivider = false
     private var trackingArea: NSTrackingArea?
 
-    override var dividerThickness: CGFloat {
-        1
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        wantsLayer = true
     }
 
-    override func layout() {
-        super.layout()
-        guard !didSetInitialDivider, arrangedSubviews.count == 2 else { return }
-        didSetInitialDivider = true
-        DispatchQueue.main.async { [weak self] in
-            self?.setInitialDividerPosition()
-        }
+    required init?(coder: NSCoder) {
+        nil
+    }
+
+    func setContentViews(editorView: NSView, shelfView: NSView) {
+        self.editorView = editorView
+        self.shelfView = shelfView
+        addSubview(editorView)
+        addSubview(shelfView)
     }
 
     override func hitTest(_ point: NSPoint) -> NSView? {
-        if expandedDividerRect.contains(point) {
+        if interactiveDividerRect.contains(point) {
             return self
         }
         return super.hitTest(point)
@@ -255,7 +260,7 @@ private final class ClipShelfNSSplitView: NSSplitView {
 
     override func resetCursorRects() {
         super.resetCursorRects()
-        addCursorRect(expandedDividerRect, cursor: .resizeUpDown)
+        addCursorRect(interactiveDividerRect, cursor: .resizeUpDown)
     }
 
     override func updateTrackingAreas() {
@@ -274,7 +279,7 @@ private final class ClipShelfNSSplitView: NSSplitView {
 
     override func mouseMoved(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
-        if expandedDividerRect.contains(point) {
+        if interactiveDividerRect.contains(point) {
             NSCursor.resizeUpDown.set()
         } else {
             NSCursor.arrow.set()
@@ -283,7 +288,7 @@ private final class ClipShelfNSSplitView: NSSplitView {
 
     override func mouseDown(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
-        guard expandedDividerRect.contains(point) else {
+        guard interactiveDividerRect.contains(point) else {
             super.mouseDown(with: event)
             return
         }
@@ -296,7 +301,8 @@ private final class ClipShelfNSSplitView: NSSplitView {
             return
         }
         let point = convert(event.locationInWindow, from: nil)
-        setPosition(constrainedDividerPosition(point.y), ofDividerAt: 0)
+        dividerPosition = constrainedDividerPosition(point.y)
+        needsLayout = true
     }
 
     override func mouseUp(with event: NSEvent) {
@@ -304,37 +310,60 @@ private final class ClipShelfNSSplitView: NSSplitView {
         super.mouseUp(with: event)
     }
 
-    override func drawDivider(in rect: NSRect) {
-        // Keep the divider draggable without drawing an extra line through the popover.
+    override func layout() {
+        super.layout()
+        guard let editorView, let shelfView else { return }
+
+        let dividerY = resolvedDividerPosition
+        editorView.frame = NSRect(
+            x: bounds.minX,
+            y: dividerY + dividerThickness,
+            width: bounds.width,
+            height: max(0, bounds.height - dividerY - dividerThickness)
+        )
+        shelfView.frame = NSRect(
+            x: bounds.minX,
+            y: bounds.minY,
+            width: bounds.width,
+            height: max(0, dividerY)
+        )
     }
 
     private var expandedDividerRect: NSRect {
-        guard arrangedSubviews.count == 2 else { return .zero }
-        return dividerRect.insetBy(dx: 0, dy: -dividerHitOutset)
+        let dividerRect = dividerRect
+        return NSRect(
+            x: dividerRect.minX,
+            y: dividerRect.minY - dividerHitOutsetBelow,
+            width: dividerRect.width,
+            height: dividerRect.height + dividerHitOutsetAbove + dividerHitOutsetBelow
+        )
+    }
+
+    private var interactiveDividerRect: NSRect {
+        var rect = expandedDividerRect
+        rect.size.width = max(0, rect.width - trailingScrollerWidth)
+        return rect
     }
 
     private var dividerRect: NSRect {
-        guard arrangedSubviews.count == 2 else { return .zero }
-        let firstSubview = arrangedSubviews[0]
         return NSRect(
             x: bounds.minX,
-            y: firstSubview.frame.maxY,
+            y: resolvedDividerPosition,
             width: bounds.width,
             height: dividerThickness
         )
     }
 
+    private var resolvedDividerPosition: CGFloat {
+        if let dividerPosition {
+            return constrainedDividerPosition(dividerPosition)
+        }
+        return constrainedDividerPosition(bounds.height - preferredShelfHeight - dividerThickness)
+    }
+
     private func constrainedDividerPosition(_ position: CGFloat) -> CGFloat {
         let maxPosition = bounds.height - minimumShelfHeight - dividerThickness
         return min(max(position, minimumEditorHeight), maxPosition)
-    }
-
-    private func setInitialDividerPosition() {
-        guard arrangedSubviews.count == 2, bounds.height > 0 else { return }
-        let dividerPosition = constrainedDividerPosition(
-            bounds.height - preferredShelfHeight - dividerThickness
-        )
-        setPosition(dividerPosition, ofDividerAt: 0)
     }
 }
 

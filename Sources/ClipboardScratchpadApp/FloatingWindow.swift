@@ -46,18 +46,18 @@ final class FloatingWindow: NSPanel {
         shell.layer?.borderColor = NSColor.black.withAlphaComponent(0.35).cgColor
         shell.addSubview(hostingController.view)
 
-        let resizeOverlay = ScratchpadWindowResizeOverlayView(frame: shell.bounds)
+        let container = FloatingWindowContainerView(frame: NSRect(origin: .zero, size: contentRect.size))
+        container.autoresizingMask = [.width, .height]
+        container.cornerRadius = cornerRadius
+        container.addSubview(shell)
+
+        let resizeOverlay = ScratchpadWindowResizeOverlayView(frame: container.bounds)
         resizeOverlay.autoresizingMask = [.width, .height]
         resizeOverlay.minimumSize = self.minSize
         resizeOverlay.onResize = { [weak self] frame in
             self?.onResize?(frame)
         }
-        shell.addSubview(resizeOverlay)
-
-        let container = FloatingWindowContainerView(frame: NSRect(origin: .zero, size: contentRect.size))
-        container.autoresizingMask = [.width, .height]
-        container.cornerRadius = cornerRadius
-        container.addSubview(shell)
+        container.addSubview(resizeOverlay)
 
         self.contentView = container
     }
@@ -131,7 +131,9 @@ private final class FloatingWindowContainerView: NSView {
 
     override func layout() {
         super.layout()
-        subviews.first?.frame = bounds
+        for subview in subviews {
+            subview.frame = bounds
+        }
     }
 }
 
@@ -157,8 +159,9 @@ final class ScratchpadWindowResizeOverlayView: NSView {
 
     private let resizeEdgeThickness: CGFloat = 16
     private let headerControlsHeight: CGFloat = 32
-    private let leadingControlsWidth: CGFloat = 60
-    private let trailingControlsWidth: CGFloat = 104
+    private let headerHorizontalPadding: CGFloat = 14
+    private let headerButtonSize: CGFloat = 30
+    private let headerButtonSpacing: CGFloat = 16
     private var resizeStart: NSPoint = .zero
     private var resizeStartFrame: NSRect = .zero
     private var resizeRegion: WindowResizeRegion?
@@ -166,6 +169,9 @@ final class ScratchpadWindowResizeOverlayView: NSView {
 
     override func hitTest(_ point: NSPoint) -> NSView? {
         if resizeRegion(for: point) != nil {
+            if viewUnderOverlay(at: point)?.isDescendant(ofType: NSScroller.self) == true {
+                return nil
+            }
             return self
         }
         return nil
@@ -184,9 +190,9 @@ final class ScratchpadWindowResizeOverlayView: NSView {
         addCursorRect(NSRect(x: 0, y: 0, width: bounds.width, height: thickness), cursor: .resizeUpDown)
         addCursorRect(
             NSRect(
-                x: leadingControlsWidth,
+                x: closeButtonRect.maxX,
                 y: bounds.height - thickness,
-                width: max(0, bounds.width - leadingControlsWidth - trailingControlsWidth),
+                width: max(0, pinButtonRect.minX - closeButtonRect.maxX),
                 height: thickness
             ),
             cursor: .resizeUpDown
@@ -277,9 +283,49 @@ final class ScratchpadWindowResizeOverlayView: NSView {
         return WindowResizeRegion.region(for: point, contentSize: bounds.size, edgeThickness: resizeEdgeThickness)
     }
 
+    private func viewUnderOverlay(at point: NSPoint) -> NSView? {
+        guard let superview else { return nil }
+        for subview in superview.subviews.reversed() where subview !== self && !subview.isHidden {
+            let pointInSubview = subview.convert(point, from: self)
+            if let hitView = subview.hitTest(pointInSubview) {
+                return hitView
+            }
+        }
+        return nil
+    }
+
     private func isHeaderControlPoint(_ point: NSPoint) -> Bool {
         guard point.y >= bounds.height - headerControlsHeight else { return false }
-        return point.x <= leadingControlsWidth || point.x >= bounds.width - trailingControlsWidth
+        return closeButtonRect.contains(point)
+            || pinButtonRect.contains(point)
+            || settingsButtonRect.contains(point)
+    }
+
+    private var closeButtonRect: NSRect {
+        NSRect(
+            x: headerHorizontalPadding,
+            y: bounds.height - headerControlsHeight,
+            width: headerButtonSize,
+            height: headerControlsHeight
+        )
+    }
+
+    private var pinButtonRect: NSRect {
+        NSRect(
+            x: settingsButtonRect.minX - headerButtonSpacing - headerButtonSize,
+            y: bounds.height - headerControlsHeight,
+            width: headerButtonSize,
+            height: headerControlsHeight
+        )
+    }
+
+    private var settingsButtonRect: NSRect {
+        NSRect(
+            x: bounds.width - headerHorizontalPadding - headerButtonSize,
+            y: bounds.height - headerControlsHeight,
+            width: headerButtonSize,
+            height: headerControlsHeight
+        )
     }
 
     private func cursor(for region: WindowResizeRegion) -> NSCursor {
@@ -315,5 +361,18 @@ final class ScratchpadWindowResizeOverlayView: NSView {
         default:
             return .bottom
         }
+    }
+}
+
+private extension NSView {
+    func isDescendant<T: NSView>(ofType type: T.Type) -> Bool {
+        var view: NSView? = self
+        while let current = view {
+            if current is T {
+                return true
+            }
+            view = current.superview
+        }
+        return false
     }
 }
