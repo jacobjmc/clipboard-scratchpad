@@ -26,7 +26,7 @@ final class FloatingWindow: NSPanel {
         self.level = level
         self.isMovableByWindowBackground = false
         self.backgroundColor = .clear
-        self.hasShadow = true
+        self.hasShadow = false
         self.isOpaque = false
         self.acceptsMouseMovedEvents = true
         self.collectionBehavior = [.canJoinAllSpaces, .ignoresCycle]
@@ -40,10 +40,8 @@ final class FloatingWindow: NSPanel {
         shell.material = .popover
         shell.blendingMode = .behindWindow
         shell.state = .active
-        shell.wantsLayer = true
-        shell.layer?.cornerRadius = cornerRadius
-        shell.layer?.cornerCurve = .continuous
-        shell.layer?.masksToBounds = true
+        shell.cornerRadius = cornerRadius
+        shell.applyRoundedCorners()
         shell.layer?.borderWidth = 1
         shell.layer?.borderColor = NSColor.black.withAlphaComponent(0.35).cgColor
         shell.addSubview(hostingController.view)
@@ -56,7 +54,12 @@ final class FloatingWindow: NSPanel {
         }
         shell.addSubview(resizeOverlay)
 
-        self.contentView = shell
+        let container = FloatingWindowContainerView(frame: NSRect(origin: .zero, size: contentRect.size))
+        container.autoresizingMask = [.width, .height]
+        container.cornerRadius = cornerRadius
+        container.addSubview(shell)
+
+        self.contentView = container
     }
 
     override var canBecomeKey: Bool {
@@ -113,7 +116,39 @@ final class FloatingWindow: NSPanel {
     }
 }
 
+private final class FloatingWindowContainerView: NSView {
+    var cornerRadius: CGFloat = 18
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        wantsLayer = true
+        layer?.backgroundColor = NSColor.clear.cgColor
+    }
+
+    required init?(coder: NSCoder) {
+        nil
+    }
+
+    override func layout() {
+        super.layout()
+        subviews.first?.frame = bounds
+    }
+}
+
 private final class FloatingWindowShellView: NSVisualEffectView {
+    var cornerRadius: CGFloat = 18
+
+    override func layout() {
+        super.layout()
+        applyRoundedCorners()
+    }
+
+    func applyRoundedCorners() {
+        wantsLayer = true
+        layer?.cornerRadius = cornerRadius
+        layer?.cornerCurve = .continuous
+        layer?.masksToBounds = true
+    }
 }
 
 final class ScratchpadWindowResizeOverlayView: NSView {
