@@ -244,9 +244,6 @@ final class PaperTextContainerView: NSView {
         }
     }
 
-    private static var lightImage: NSImage?
-    private static var darkImage: NSImage?
-
     override var isFlipped: Bool {
         true
     }
@@ -277,7 +274,7 @@ final class PaperTextContainerView: NSView {
         ).setFill()
         dirtyRect.fill()
 
-        NSColor(patternImage: Self.image(for: appearance)).setFill()
+        NSColor(patternImage: PaperTextureImageCache.image(for: appearance)).setFill()
         dirtyRect.fill()
     }
 
@@ -286,7 +283,13 @@ final class PaperTextContainerView: NSView {
         return bestMatch == .darkAqua
     }
 
-    private static func image(for appearance: PaperTexture.Appearance) -> NSImage {
+}
+
+enum PaperTextureImageCache {
+    private static var lightImage: NSImage?
+    private static var darkImage: NSImage?
+
+    static func image(for appearance: PaperTexture.Appearance) -> NSImage {
         switch appearance {
         case .light:
             if let lightImage {

@@ -59,11 +59,11 @@ The product should stay local-first, fast, and single-purpose. It should not bec
 ## Language
 
 **Paper finish**:
-A subtle matte texture applied only to the editable scratchpad editor surface, controlled by a Settings toggle.
-_Avoid_: applying paper texture to header, footer, settings, clip shelf, or other app chrome.
+A subtle matte texture applied to the editable scratchpad editor surface and top bar, controlled by a Settings toggle.
+_Avoid_: applying paper texture to the footer, settings, clip shelf, or other app chrome.
 
 **Paper Finish setting**:
-A persisted Settings preference that defaults on and controls whether the editable scratchpad editor surface uses the paper finish. In Settings, it appears directly under Appearance, titled `Paper Finish`, with the description `Add a subtle matte texture to the note.`
+A persisted Settings preference that defaults on and controls whether the editable scratchpad editor surface and top bar use the paper finish. In Settings, it appears directly under Appearance, titled `Paper Finish`, with the description `Add a subtle matte texture to the note.`
 When off, the editor uses the native text view background.
 _Avoid_: temporary per-window state, intensity controls, texture style choices, or a second custom flat editor theme.
 
@@ -72,8 +72,8 @@ The dark-mode version of paper finish, using a warm charcoal editor surface with
 _Avoid_: beige paper in dark mode, bright speckles, or a texture so strong that it reads as visual noise.
 
 **Paper finish scope**:
-Paper finish changes only the editor background surface, including when the editor appears above the Clip Shelf drawer, not text styling or editing behavior.
-_Avoid_: extending paper finish into the Clip Shelf, split divider, custom fonts, custom selection colors, cursor changes, line-spacing changes, or undo/text-input changes for the paper finish.
+Paper finish changes the editor background surface and top bar background, including when the editor appears above the Clip Shelf drawer, not text styling or editing behavior.
+_Avoid_: extending paper finish into the footer, Clip Shelf, split divider, custom fonts, custom selection colors, cursor changes, line-spacing changes, or undo/text-input changes for the paper finish.
 
 ## Current Non-Goals
 

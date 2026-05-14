@@ -71,7 +71,13 @@ struct ContentView: View {
             }
             .padding(.horizontal, 14)
             .frame(height: 32)
-            .background(VisualEffectBar())
+            .background {
+                if store.paperFinishEnabled {
+                    PaperTopBarBackground()
+                } else {
+                    VisualEffectBar()
+                }
+            }
 
             if isShowingClips {
                 VSplitView {
@@ -187,6 +193,42 @@ private struct VisualEffectBar: NSViewRepresentable {
         nsView.material = .windowBackground
         nsView.blendingMode = .withinWindow
         nsView.state = .active
+    }
+}
+
+private struct PaperTopBarBackground: NSViewRepresentable {
+    func makeNSView(context: Context) -> PaperTopBarBackgroundView {
+        PaperTopBarBackgroundView()
+    }
+
+    func updateNSView(_ nsView: PaperTopBarBackgroundView, context: Context) {
+        nsView.needsDisplay = true
+    }
+}
+
+private final class PaperTopBarBackgroundView: NSView {
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        needsDisplay = true
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        let appearance = isDarkAppearance ? PaperTexture.Appearance.dark : .light
+        let base = appearance.baseColor
+        NSColor(
+            calibratedRed: base.red,
+            green: base.green,
+            blue: base.blue,
+            alpha: 1
+        ).setFill()
+        dirtyRect.fill()
+
+        NSColor(patternImage: PaperTextureImageCache.image(for: appearance)).setFill()
+        dirtyRect.fill()
+    }
+
+    private var isDarkAppearance: Bool {
+        effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
     }
 }
 
