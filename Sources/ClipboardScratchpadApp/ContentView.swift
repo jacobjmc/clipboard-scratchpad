@@ -96,12 +96,10 @@ struct ContentView: View {
                     .frame(minHeight: 104, idealHeight: 220)
                 }
                 .frame(maxHeight: .infinity)
-                Divider()
             } else {
                 PlainTextView(text: $store.noteText, paperFinishEnabled: store.paperFinishEnabled) {
                     store.noteDidChange()
                 }
-                Divider()
             }
 
             HStack(spacing: 12) {

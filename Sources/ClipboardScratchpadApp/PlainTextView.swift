@@ -19,6 +19,8 @@ struct PlainTextView: NSViewRepresentable {
 
     func makeNSView(context: Context) -> PaperTextContainerView {
         let containerView = PaperTextContainerView(frame: .zero)
+        containerView.wantsLayer = true
+        containerView.layer?.masksToBounds = true
         let scrollView = NSScrollView()
         scrollView.hasVerticalScroller = true
         scrollView.autohidesScrollers = true
