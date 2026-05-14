@@ -12,6 +12,13 @@ final class WindowResizeRegionTests: XCTestCase {
         )
     }
 
+    func testCornerHasForgivingHitArea() {
+        XCTAssertEqual(
+            WindowResizeRegion.region(for: CGPoint(x: 426, y: 14), contentSize: contentSize),
+            [.right, .bottom]
+        )
+    }
+
     func testCenterIsNotResizable() {
         XCTAssertNil(WindowResizeRegion.region(for: CGPoint(x: 220, y: 260), contentSize: contentSize))
     }

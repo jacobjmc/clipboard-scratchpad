@@ -155,13 +155,17 @@ final class ScratchpadWindowResizeOverlayView: NSView {
     var minimumSize: NSSize = NSSize(width: 360, height: 320)
     var onResize: ((CGRect) -> Void)?
 
+    private let resizeEdgeThickness: CGFloat = 16
+    private let headerControlsHeight: CGFloat = 32
+    private let leadingControlsWidth: CGFloat = 60
+    private let trailingControlsWidth: CGFloat = 104
     private var resizeStart: NSPoint = .zero
     private var resizeStartFrame: NSRect = .zero
     private var resizeRegion: WindowResizeRegion?
     private var cursorTrackingAreas: [NSTrackingArea] = []
 
     override func hitTest(_ point: NSPoint) -> NSView? {
-        if WindowResizeRegion.region(for: point, contentSize: bounds.size) != nil {
+        if resizeRegion(for: point) != nil {
             return self
         }
         return nil
@@ -173,11 +177,20 @@ final class ScratchpadWindowResizeOverlayView: NSView {
 
     override func resetCursorRects() {
         super.resetCursorRects()
-        let thickness: CGFloat = 8
-        addCursorRect(NSRect(x: 0, y: 0, width: thickness, height: bounds.height), cursor: .resizeLeftRight)
-        addCursorRect(NSRect(x: bounds.width - thickness, y: 0, width: thickness, height: bounds.height), cursor: .resizeLeftRight)
+        let thickness = resizeEdgeThickness
+        let verticalEdgeHeight = max(0, bounds.height - headerControlsHeight)
+        addCursorRect(NSRect(x: 0, y: 0, width: thickness, height: verticalEdgeHeight), cursor: .resizeLeftRight)
+        addCursorRect(NSRect(x: bounds.width - thickness, y: 0, width: thickness, height: verticalEdgeHeight), cursor: .resizeLeftRight)
         addCursorRect(NSRect(x: 0, y: 0, width: bounds.width, height: thickness), cursor: .resizeUpDown)
-        addCursorRect(NSRect(x: 0, y: bounds.height - thickness, width: bounds.width, height: thickness), cursor: .resizeUpDown)
+        addCursorRect(
+            NSRect(
+                x: leadingControlsWidth,
+                y: bounds.height - thickness,
+                width: max(0, bounds.width - leadingControlsWidth - trailingControlsWidth),
+                height: thickness
+            ),
+            cursor: .resizeUpDown
+        )
     }
 
     override func cursorUpdate(with event: NSEvent) {
@@ -194,7 +207,7 @@ final class ScratchpadWindowResizeOverlayView: NSView {
 
     override func mouseDown(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
-        guard let region = WindowResizeRegion.region(for: point, contentSize: bounds.size), let window else {
+        guard let region = resizeRegion(for: point), let window else {
             super.mouseDown(with: event)
             return
         }
@@ -252,11 +265,21 @@ final class ScratchpadWindowResizeOverlayView: NSView {
     }
 
     private func updateCursor(for point: NSPoint) {
-        guard let region = WindowResizeRegion.region(for: point, contentSize: bounds.size) else {
+        guard let region = resizeRegion(for: point) else {
             NSCursor.arrow.set()
             return
         }
         cursor(for: region).set()
+    }
+
+    private func resizeRegion(for point: NSPoint) -> WindowResizeRegion? {
+        guard !isHeaderControlPoint(point) else { return nil }
+        return WindowResizeRegion.region(for: point, contentSize: bounds.size, edgeThickness: resizeEdgeThickness)
+    }
+
+    private func isHeaderControlPoint(_ point: NSPoint) -> Bool {
+        guard point.y >= bounds.height - headerControlsHeight else { return false }
+        return point.x <= leadingControlsWidth || point.x >= bounds.width - trailingControlsWidth
     }
 
     private func cursor(for region: WindowResizeRegion) -> NSCursor {

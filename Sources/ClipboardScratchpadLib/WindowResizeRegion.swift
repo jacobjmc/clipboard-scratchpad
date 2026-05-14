@@ -16,7 +16,7 @@ public struct WindowResizeRegion: OptionSet, Equatable {
     public static func region(
         for point: CGPoint,
         contentSize: CGSize,
-        edgeThickness: CGFloat = 8
+        edgeThickness: CGFloat = 16
     ) -> WindowResizeRegion? {
         var region: WindowResizeRegion = []
 
