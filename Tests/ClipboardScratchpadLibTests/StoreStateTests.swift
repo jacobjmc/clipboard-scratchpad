@@ -16,6 +16,20 @@ final class StoreStateTests: XCTestCase {
         XCTAssertEqual(state.clips.count, 0)
         XCTAssertNil(state.windowFrame)
         XCTAssertNil(state.globalShortcut)
+        XCTAssertEqual(state.appearancePreference, .system)
+    }
+
+    func testRoundTripsWithAppearancePreference() throws {
+        let state = StoreState(
+            noteText: "Hello",
+            clips: [],
+            appearancePreference: .dark
+        )
+
+        let data = try JSONEncoder().encode(state)
+        let decoded = try JSONDecoder().decode(StoreState.self, from: data)
+
+        XCTAssertEqual(decoded.appearancePreference, .dark)
     }
 
     func testRoundTripsWithGlobalShortcut() throws {

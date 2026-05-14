@@ -7,7 +7,7 @@ final class FloatingWindow: NSPanel {
     var onResize: ((CGRect) -> Void)?
     var onClose: (() -> Void)?
 
-    private let cornerRadius: CGFloat = 14
+    private let cornerRadius: CGFloat = 18
     private var dragStart: NSPoint = .zero
 
     init<Content: View>(

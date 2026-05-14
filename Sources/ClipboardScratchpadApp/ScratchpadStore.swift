@@ -19,6 +19,13 @@ final class ScratchpadStore: ObservableObject {
     }
     @Published var globalShortcut: GlobalKeyboardShortcut? = nil
     @Published var globalShortcutUnavailable: Bool = false
+    @Published var appearancePreference: AppearancePreference = .system {
+        didSet {
+            guard appearancePreference != oldValue else { return }
+            applyAppearancePreference()
+            saveImmediately()
+        }
+    }
     @Published var isAccessibilityTrusted: Bool = AXIsProcessTrusted()
     @Published var isPinned: Bool = false {
         didSet {
@@ -61,6 +68,7 @@ final class ScratchpadStore: ObservableObject {
         self.storeURL = dir.appendingPathComponent("store.json")
         self.backupURL = dir.appendingPathComponent("store.blocks.backup.json")
         load()
+        applyAppearancePreference()
         startClipboardMonitoring()
     }
 
@@ -193,7 +201,8 @@ final class ScratchpadStore: ObservableObject {
             updatedAt: updatedAt,
             clips: clips,
             windowFrame: windowFrame,
-            globalShortcut: globalShortcut
+            globalShortcut: globalShortcut,
+            appearancePreference: appearancePreference
         )
         do {
             let data = try JSONEncoder().encode(state)
@@ -215,6 +224,7 @@ final class ScratchpadStore: ObservableObject {
                 clips = state.clips
                 windowFrame = state.windowFrame
                 globalShortcut = state.globalShortcut
+                appearancePreference = state.appearancePreference
                 lastCapturedClipText = state.clips.first?.content.trimmingCharacters(in: .whitespacesAndNewlines)
                 return
             }
@@ -226,6 +236,10 @@ final class ScratchpadStore: ObservableObject {
         }
         noteText = ""
         clips = []
+    }
+
+    private func applyAppearancePreference() {
+        NSApp.appearance = appearancePreference.nsAppearance
     }
 
     func globalShortcutDidRegister(_ shortcut: GlobalKeyboardShortcut) {

@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import SwiftUI
 import ClipboardScratchpadLib
 
@@ -16,6 +17,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate, NSWindowDelegate {
     private var hotKeyController: GlobalHotKeyController?
     private var presentationState = ScratchpadPresentationState()
     private var isResettingWindowFrame = false
+    private var cancellables: Set<AnyCancellable> = []
 
     init(store: ScratchpadStore) {
         self.store = store
@@ -27,8 +29,16 @@ final class StatusBarController: NSObject, NSPopoverDelegate, NSWindowDelegate {
         popover.behavior = .transient
         popover.delegate = self
         popover.contentViewController = NSHostingController(
-            rootView: ContentView().environmentObject(store)
+            rootView: ScratchpadRootView(store: store)
         )
+        applyAppearancePreference()
+
+        store.$appearancePreference
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.applyAppearancePreference()
+            }
+            .store(in: &cancellables)
 
         if let button = statusItem.button {
             button.image = NSImage(systemSymbolName: "doc.on.clipboard", accessibilityDescription: "Clipboard Scratchpad")
@@ -145,8 +155,9 @@ final class StatusBarController: NSObject, NSPopoverDelegate, NSWindowDelegate {
             floatingWindow = FloatingWindow(
                 contentRect: resolved,
                 level: .floating,
-                contentView: ContentView().environmentObject(store)
+                contentView: ScratchpadRootView(store: store)
             )
+            floatingWindow?.appearance = store.appearancePreference.nsAppearance
             floatingWindow?.onMove = { [weak self] frame in
                 guard self?.isResettingWindowFrame == false else { return }
                 self?.store.windowFrame = frame
@@ -162,6 +173,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate, NSWindowDelegate {
         } else {
             floatingWindow?.setFrame(resolved, display: true)
         }
+        applyAppearancePreference()
         if shouldAnimate {
             floatingWindow?.alphaValue = 0
         }
@@ -330,8 +342,9 @@ final class StatusBarController: NSObject, NSPopoverDelegate, NSWindowDelegate {
         let window = FloatingWindow(
             contentRect: resolveFloatingFrame(),
             level: .normal,
-            contentView: ContentView().environmentObject(store)
+            contentView: ScratchpadRootView(store: store)
         )
+        window.appearance = store.appearancePreference.nsAppearance
         window.onMove = { [weak self] frame in
             guard self?.isResettingWindowFrame == false else { return }
             self?.store.windowFrame = frame
@@ -348,6 +361,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate, NSWindowDelegate {
         }
         detachedWindow = window
         store.windowFrame = window.frame
+        applyAppearancePreference()
         eventMonitor?.stop()
         return window
     }
@@ -356,6 +370,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate, NSWindowDelegate {
         presentationState.popoverDetached()
 
         let window = popover.contentViewController?.view.window
+        window?.appearance = store.appearancePreference.nsAppearance
+        window?.contentView?.appearance = store.appearancePreference.nsAppearance
         window?.styleMask.insert(.resizable)
         window?.minSize = Self.minimumWindowSize
         window?.acceptsMouseMovedEvents = true
@@ -406,5 +422,20 @@ final class StatusBarController: NSObject, NSPopoverDelegate, NSWindowDelegate {
         guard let window = notification.object as? NSWindow else { return }
         guard window === popover.contentViewController?.view.window || window === detachedWindow else { return }
         store.windowFrame = window.frame
+    }
+
+    private func applyAppearancePreference() {
+        let appearance = store.appearancePreference.nsAppearance
+        NSApp.appearance = appearance
+
+        popover.contentViewController?.view.appearance = appearance
+        popover.contentViewController?.view.window?.appearance = appearance
+        popover.contentViewController?.view.window?.contentView?.appearance = appearance
+
+        floatingWindow?.appearance = appearance
+        floatingWindow?.contentView?.appearance = appearance
+
+        detachedWindow?.appearance = appearance
+        detachedWindow?.contentView?.appearance = appearance
     }
 }

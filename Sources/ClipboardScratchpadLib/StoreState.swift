@@ -23,19 +23,22 @@ public struct StoreState: Codable {
     public var clips: [ClipShelfItem]
     public var windowFrame: CGRect?
     public var globalShortcut: GlobalKeyboardShortcut?
+    public var appearancePreference: AppearancePreference
 
     public init(
         noteText: String,
         updatedAt: Date? = nil,
         clips: [ClipShelfItem] = [],
         windowFrame: CGRect? = nil,
-        globalShortcut: GlobalKeyboardShortcut? = nil
+        globalShortcut: GlobalKeyboardShortcut? = nil,
+        appearancePreference: AppearancePreference = .system
     ) {
         self.noteText = noteText
         self.updatedAt = updatedAt
         self.clips = clips
         self.windowFrame = windowFrame
         self.globalShortcut = globalShortcut
+        self.appearancePreference = appearancePreference
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -44,6 +47,7 @@ public struct StoreState: Codable {
         case clips
         case windowFrame
         case globalShortcut
+        case appearancePreference
     }
 
     public init(from decoder: Decoder) throws {
@@ -53,6 +57,7 @@ public struct StoreState: Codable {
         clips = try container.decodeIfPresent([ClipShelfItem].self, forKey: .clips) ?? []
         windowFrame = try container.decodeIfPresent(CGRect.self, forKey: .windowFrame)
         globalShortcut = try container.decodeIfPresent(GlobalKeyboardShortcut.self, forKey: .globalShortcut)
+        appearancePreference = try container.decodeIfPresent(AppearancePreference.self, forKey: .appearancePreference) ?? .system
     }
 }
 

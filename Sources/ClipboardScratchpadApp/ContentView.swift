@@ -65,6 +65,7 @@ struct ContentView: View {
                     .popover(isPresented: $isShowingSettings, arrowEdge: .top) {
                         SettingsView()
                             .environmentObject(store)
+                            .preferredColorScheme(store.appearancePreference.colorScheme)
                     }
                 }
             }
@@ -178,13 +179,17 @@ struct ContentView: View {
 private struct VisualEffectBar: NSViewRepresentable {
     func makeNSView(context: Context) -> NSVisualEffectView {
         let view = NSVisualEffectView()
-        view.material = .headerView
-        view.blendingMode = .behindWindow
+        view.material = .windowBackground
+        view.blendingMode = .withinWindow
         view.state = .active
         return view
     }
 
-    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {}
+    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {
+        nsView.material = .windowBackground
+        nsView.blendingMode = .withinWindow
+        nsView.state = .active
+    }
 }
 
 private struct SettingsView: View {
@@ -209,6 +214,23 @@ private struct SettingsView: View {
                 .buttonStyle(.borderless)
                 .help("Close")
                 .accessibilityLabel("Close settings")
+            }
+
+            Divider()
+
+            SettingsRow(
+                systemSymbolName: "circle.lefthalf.filled",
+                title: "Appearance",
+                subtitle: "Use system, light, or dark mode."
+            ) {
+                Picker("", selection: $store.appearancePreference) {
+                    Text("System").tag(AppearancePreference.system)
+                    Text("Light").tag(AppearancePreference.light)
+                    Text("Dark").tag(AppearancePreference.dark)
+                }
+                .labelsHidden()
+                .pickerStyle(.segmented)
+                .frame(width: 204)
             }
 
             Divider()
@@ -268,6 +290,7 @@ private struct SettingsView: View {
         }
         .padding(18)
         .frame(width: 430)
+        .background(Color(nsColor: .windowBackgroundColor))
         .presentationCompactAdaptation(.popover)
         .onAppear {
             store.refreshAccessibilityStatus()
@@ -516,7 +539,7 @@ private struct ClipShelfDrawer: View {
                 .frame(maxHeight: .infinity)
             }
         }
-        .background(Color(nsColor: .controlBackgroundColor).opacity(0.55))
+        .background(Color(nsColor: .windowBackgroundColor))
     }
 }
 
