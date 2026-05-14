@@ -240,12 +240,10 @@ private final class ClipShelfNSSplitView: NSSplitView {
     override func layout() {
         super.layout()
         guard !didSetInitialDivider, arrangedSubviews.count == 2 else { return }
-        let dividerPosition = max(
-            minimumEditorHeight,
-            bounds.height - preferredShelfHeight - dividerThickness
-        )
-        setPosition(dividerPosition, ofDividerAt: 0)
         didSetInitialDivider = true
+        DispatchQueue.main.async { [weak self] in
+            self?.setInitialDividerPosition()
+        }
     }
 
     override func hitTest(_ point: NSPoint) -> NSView? {
@@ -307,13 +305,7 @@ private final class ClipShelfNSSplitView: NSSplitView {
     }
 
     override func drawDivider(in rect: NSRect) {
-        NSColor.separatorColor.withAlphaComponent(0.65).setFill()
-        NSRect(
-            x: rect.minX,
-            y: rect.midY - 0.5,
-            width: rect.width,
-            height: 1
-        ).fill()
+        // Keep the divider draggable without drawing an extra line through the popover.
     }
 
     private var expandedDividerRect: NSRect {
@@ -335,6 +327,14 @@ private final class ClipShelfNSSplitView: NSSplitView {
     private func constrainedDividerPosition(_ position: CGFloat) -> CGFloat {
         let maxPosition = bounds.height - minimumShelfHeight - dividerThickness
         return min(max(position, minimumEditorHeight), maxPosition)
+    }
+
+    private func setInitialDividerPosition() {
+        guard arrangedSubviews.count == 2, bounds.height > 0 else { return }
+        let dividerPosition = constrainedDividerPosition(
+            bounds.height - preferredShelfHeight - dividerThickness
+        )
+        setPosition(dividerPosition, ofDividerAt: 0)
     }
 }
 
