@@ -158,6 +158,7 @@ final class ScratchpadWindowResizeOverlayView: NSView {
     var onResize: ((CGRect) -> Void)?
 
     private let resizeEdgeThickness: CGFloat = 16
+    private let topResizeEdgeThickness: CGFloat = 8
     private let headerControlsHeight: CGFloat = 32
     private let headerHorizontalPadding: CGFloat = 14
     private let headerButtonSize: CGFloat = 30
@@ -167,9 +168,19 @@ final class ScratchpadWindowResizeOverlayView: NSView {
     private var resizeRegion: WindowResizeRegion?
     private var cursorTrackingAreas: [NSTrackingArea] = []
 
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        wantsLayer = true
+        layer?.backgroundColor = NSColor.white.withAlphaComponent(0.001).cgColor
+    }
+
+    required init?(coder: NSCoder) {
+        nil
+    }
+
     override func hitTest(_ point: NSPoint) -> NSView? {
-        if resizeRegion(for: point) != nil {
-            if viewUnderOverlay(at: point)?.isDescendant(ofType: NSScroller.self) == true {
+        if let region = resizeRegion(for: point) {
+            if region == .right, viewUnderOverlay(at: point)?.isDescendant(ofType: NSScroller.self) == true {
                 return nil
             }
             return self
@@ -184,6 +195,7 @@ final class ScratchpadWindowResizeOverlayView: NSView {
     override func resetCursorRects() {
         super.resetCursorRects()
         let thickness = resizeEdgeThickness
+        let topThickness = topResizeEdgeThickness
         let verticalEdgeHeight = max(0, bounds.height - headerControlsHeight)
         addCursorRect(NSRect(x: 0, y: 0, width: thickness, height: verticalEdgeHeight), cursor: .resizeLeftRight)
         addCursorRect(NSRect(x: bounds.width - thickness, y: 0, width: thickness, height: verticalEdgeHeight), cursor: .resizeLeftRight)
@@ -191,9 +203,9 @@ final class ScratchpadWindowResizeOverlayView: NSView {
         addCursorRect(
             NSRect(
                 x: closeButtonRect.maxX,
-                y: bounds.height - thickness,
+                y: bounds.height - topThickness,
                 width: max(0, pinButtonRect.minX - closeButtonRect.maxX),
-                height: thickness
+                height: topThickness
             ),
             cursor: .resizeUpDown
         )
@@ -280,7 +292,21 @@ final class ScratchpadWindowResizeOverlayView: NSView {
 
     private func resizeRegion(for point: NSPoint) -> WindowResizeRegion? {
         guard !isHeaderControlPoint(point) else { return nil }
-        return WindowResizeRegion.region(for: point, contentSize: bounds.size, edgeThickness: resizeEdgeThickness)
+        var region: WindowResizeRegion = []
+
+        if point.x <= resizeEdgeThickness {
+            region.insert(.left)
+        } else if point.x >= bounds.width - resizeEdgeThickness {
+            region.insert(.right)
+        }
+
+        if point.y <= resizeEdgeThickness {
+            region.insert(.bottom)
+        } else if point.y >= bounds.height - topResizeEdgeThickness {
+            region.insert(.top)
+        }
+
+        return region.isEmpty ? nil : region
     }
 
     private func viewUnderOverlay(at point: NSPoint) -> NSView? {
