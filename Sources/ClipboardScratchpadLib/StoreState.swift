@@ -25,6 +25,7 @@ public struct StoreState: Codable {
     public var globalShortcut: GlobalKeyboardShortcut?
     public var appearancePreference: AppearancePreference
     public var paperFinishEnabled: Bool
+    public var customNoteBackgroundImagePath: String?
 
     public init(
         noteText: String,
@@ -33,7 +34,8 @@ public struct StoreState: Codable {
         windowFrame: CGRect? = nil,
         globalShortcut: GlobalKeyboardShortcut? = nil,
         appearancePreference: AppearancePreference = .system,
-        paperFinishEnabled: Bool = true
+        paperFinishEnabled: Bool = true,
+        customNoteBackgroundImagePath: String? = nil
     ) {
         self.noteText = noteText
         self.updatedAt = updatedAt
@@ -42,6 +44,7 @@ public struct StoreState: Codable {
         self.globalShortcut = globalShortcut
         self.appearancePreference = appearancePreference
         self.paperFinishEnabled = paperFinishEnabled
+        self.customNoteBackgroundImagePath = customNoteBackgroundImagePath
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -52,6 +55,7 @@ public struct StoreState: Codable {
         case globalShortcut
         case appearancePreference
         case paperFinishEnabled
+        case customNoteBackgroundImagePath
     }
 
     public init(from decoder: Decoder) throws {
@@ -63,6 +67,7 @@ public struct StoreState: Codable {
         globalShortcut = try container.decodeIfPresent(GlobalKeyboardShortcut.self, forKey: .globalShortcut)
         appearancePreference = try container.decodeIfPresent(AppearancePreference.self, forKey: .appearancePreference) ?? .system
         paperFinishEnabled = try container.decodeIfPresent(Bool.self, forKey: .paperFinishEnabled) ?? true
+        customNoteBackgroundImagePath = try container.decodeIfPresent(String.self, forKey: .customNoteBackgroundImagePath)
     }
 }
 

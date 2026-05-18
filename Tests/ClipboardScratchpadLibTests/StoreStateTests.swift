@@ -18,6 +18,7 @@ final class StoreStateTests: XCTestCase {
         XCTAssertNil(state.globalShortcut)
         XCTAssertEqual(state.appearancePreference, .system)
         XCTAssertTrue(state.paperFinishEnabled)
+        XCTAssertNil(state.customNoteBackgroundImagePath)
     }
 
     func testRoundTripsWithPaperFinishDisabled() throws {
@@ -31,6 +32,19 @@ final class StoreStateTests: XCTestCase {
         let decoded = try JSONDecoder().decode(StoreState.self, from: data)
 
         XCTAssertFalse(decoded.paperFinishEnabled)
+    }
+
+    func testRoundTripsWithCustomNoteBackgroundImagePath() throws {
+        let state = StoreState(
+            noteText: "Hello",
+            clips: [],
+            customNoteBackgroundImagePath: "/tmp/background.jpg"
+        )
+
+        let data = try JSONEncoder().encode(state)
+        let decoded = try JSONDecoder().decode(StoreState.self, from: data)
+
+        XCTAssertEqual(decoded.customNoteBackgroundImagePath, "/tmp/background.jpg")
     }
 
     func testRoundTripsWithAppearancePreference() throws {

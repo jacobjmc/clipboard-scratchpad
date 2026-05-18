@@ -2,6 +2,7 @@ import Foundation
 import Combine
 import AppKit
 import ApplicationServices
+import UniformTypeIdentifiers
 import ClipboardScratchpadLib
 
 final class ScratchpadStore: ObservableObject {
@@ -32,6 +33,12 @@ final class ScratchpadStore: ObservableObject {
             saveImmediately()
         }
     }
+    @Published var customNoteBackgroundImagePath: String? = nil {
+        didSet {
+            guard customNoteBackgroundImagePath != oldValue else { return }
+            saveImmediately()
+        }
+    }
     @Published var isAccessibilityTrusted: Bool = AXIsProcessTrusted()
     @Published var isPinned: Bool = false {
         didSet {
@@ -51,6 +58,7 @@ final class ScratchpadStore: ObservableObject {
     private let clipboardMonitor = ClipboardMonitor()
     private let storeURL: URL
     private let backupURL: URL
+    private let backgroundsDirectoryURL: URL
 
     var previousExternalAppName: String? {
         guard let application = lastExternalApplication, !application.isTerminated else { return nil }
@@ -67,12 +75,22 @@ final class ScratchpadStore: ObservableObject {
         return !application.isTerminated
     }
 
+    var customNoteBackgroundImageURL: URL? {
+        guard let customNoteBackgroundImagePath else { return nil }
+        return URL(fileURLWithPath: customNoteBackgroundImagePath)
+    }
+
+    var customNoteBackgroundDisplayName: String? {
+        customNoteBackgroundImageURL?.lastPathComponent
+    }
+
     init() {
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
             .appendingPathComponent("ClipboardScratchpad", isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         self.storeURL = dir.appendingPathComponent("store.json")
         self.backupURL = dir.appendingPathComponent("store.blocks.backup.json")
+        self.backgroundsDirectoryURL = dir.appendingPathComponent("Backgrounds", isDirectory: true)
         load()
         applyAppearancePreference()
         startClipboardMonitoring()
@@ -189,6 +207,48 @@ final class ScratchpadStore: ObservableObject {
         scheduleSave()
     }
 
+    func chooseCustomNoteBackground() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.png, .jpeg, .heic, .tiff]
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+        panel.resolvesAliases = true
+
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        setCustomNoteBackground(from: url)
+    }
+
+    func setCustomNoteBackground(from sourceURL: URL) {
+        guard let image = NSImage(contentsOf: sourceURL),
+              let jpegData = normalizedBackgroundJPEGData(from: image) else {
+            persistenceWarning = "Couldn’t use that image as a background."
+            return
+        }
+
+        do {
+            try FileManager.default.createDirectory(at: backgroundsDirectoryURL, withIntermediateDirectories: true)
+            let previousBackgroundURL = customNoteBackgroundImageURL
+            let backgroundURL = backgroundsDirectoryURL.appendingPathComponent("note-background-\(UUID().uuidString).jpg")
+            try jpegData.write(to: backgroundURL, options: .atomic)
+            paperFinishEnabled = false
+            customNoteBackgroundImagePath = backgroundURL.path
+            if let previousBackgroundURL, previousBackgroundURL != backgroundURL {
+                try? FileManager.default.removeItem(at: previousBackgroundURL)
+            }
+            persistenceWarning = nil
+        } catch {
+            persistenceWarning = "Couldn’t save the background image."
+        }
+    }
+
+    func removeCustomNoteBackground() {
+        if let url = customNoteBackgroundImageURL {
+            try? FileManager.default.removeItem(at: url)
+        }
+        customNoteBackgroundImagePath = nil
+    }
+
     // MARK: - Autosave
 
     func scheduleSave() {
@@ -209,7 +269,8 @@ final class ScratchpadStore: ObservableObject {
             windowFrame: windowFrame,
             globalShortcut: globalShortcut,
             appearancePreference: appearancePreference,
-            paperFinishEnabled: paperFinishEnabled
+            paperFinishEnabled: paperFinishEnabled,
+            customNoteBackgroundImagePath: customNoteBackgroundImagePath
         )
         do {
             let data = try JSONEncoder().encode(state)
@@ -233,6 +294,7 @@ final class ScratchpadStore: ObservableObject {
                 globalShortcut = state.globalShortcut
                 appearancePreference = state.appearancePreference
                 paperFinishEnabled = state.paperFinishEnabled
+                customNoteBackgroundImagePath = state.customNoteBackgroundImagePath
                 lastCapturedClipText = state.clips.first?.content.trimmingCharacters(in: .whitespacesAndNewlines)
                 return
             }
@@ -325,5 +387,35 @@ final class ScratchpadStore: ObservableObject {
         keyUp?.flags = .maskCommand
         keyDown?.postToPid(processIdentifier)
         keyUp?.postToPid(processIdentifier)
+    }
+
+    private func normalizedBackgroundJPEGData(from image: NSImage) -> Data? {
+        let maxLongEdge: CGFloat = 2400
+        let originalSize = image.size
+        guard originalSize.width > 0, originalSize.height > 0 else { return nil }
+
+        let scale = min(1, maxLongEdge / max(originalSize.width, originalSize.height))
+        let targetSize = NSSize(
+            width: max(1, floor(originalSize.width * scale)),
+            height: max(1, floor(originalSize.height * scale))
+        )
+
+        let outputImage = NSImage(size: targetSize)
+        outputImage.lockFocus()
+        NSGraphicsContext.current?.imageInterpolation = .high
+        image.draw(
+            in: NSRect(origin: .zero, size: targetSize),
+            from: NSRect(origin: .zero, size: originalSize),
+            operation: .copy,
+            fraction: 1
+        )
+        outputImage.unlockFocus()
+
+        guard let tiffData = outputImage.tiffRepresentation,
+              let bitmap = NSBitmapImageRep(data: tiffData) else {
+            return nil
+        }
+
+        return bitmap.representation(using: .jpeg, properties: [.compressionFactor: 0.86])
     }
 }

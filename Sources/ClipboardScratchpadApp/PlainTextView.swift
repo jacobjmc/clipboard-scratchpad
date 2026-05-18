@@ -15,6 +15,8 @@ extension Notification.Name {
 struct PlainTextView: NSViewRepresentable {
     @Binding var text: String
     var paperFinishEnabled: Bool
+    var backgroundImageURL: URL?
+    var drawsBackgroundImage: Bool = true
     var onTextChange: () -> Void
 
     func makeNSView(context: Context) -> PaperTextContainerView {
@@ -103,9 +105,11 @@ struct PlainTextView: NSViewRepresentable {
         textView: PlainTextNSTextView
     ) {
         containerView.paperFinishEnabled = paperFinishEnabled
-        scrollView.drawsBackground = !paperFinishEnabled
-        textView.drawsBackground = !paperFinishEnabled
-        textView.backgroundColor = paperFinishEnabled ? .clear : .textBackgroundColor
+        containerView.backgroundImageURL = drawsBackgroundImage ? backgroundImageURL : nil
+        let hasCustomBackground = backgroundImageURL != nil
+        scrollView.drawsBackground = !paperFinishEnabled && !hasCustomBackground
+        textView.drawsBackground = !paperFinishEnabled && !hasCustomBackground
+        textView.backgroundColor = paperFinishEnabled || hasCustomBackground ? .clear : .textBackgroundColor
     }
 
     final class Coordinator: NSObject, NSTextViewDelegate {
@@ -243,6 +247,16 @@ final class PaperTextContainerView: NSView {
             needsDisplay = true
         }
     }
+    var backgroundImageURL: URL? {
+        didSet {
+            if backgroundImageURL != oldValue {
+                backgroundImage = backgroundImageURL.flatMap(NSImage.init(contentsOf:))
+            }
+            needsDisplay = true
+        }
+    }
+
+    private var backgroundImage: NSImage?
 
     override var isFlipped: Bool {
         true
@@ -259,6 +273,12 @@ final class PaperTextContainerView: NSView {
     }
 
     override func draw(_ dirtyRect: NSRect) {
+        if let backgroundImage {
+            drawBackgroundImage(backgroundImage, in: dirtyRect)
+            drawReadabilityOverlay(in: dirtyRect)
+            return
+        }
+
         guard paperFinishEnabled else {
             super.draw(dirtyRect)
             return
@@ -281,6 +301,37 @@ final class PaperTextContainerView: NSView {
     private var isDarkAppearance: Bool {
         let bestMatch = effectiveAppearance.bestMatch(from: [.darkAqua, .aqua])
         return bestMatch == .darkAqua
+    }
+
+    private func drawBackgroundImage(_ image: NSImage, in dirtyRect: NSRect) {
+        let imageSize = image.size
+        guard imageSize.width > 0, imageSize.height > 0, bounds.width > 0, bounds.height > 0 else { return }
+
+        let scale = max(bounds.width / imageSize.width, bounds.height / imageSize.height)
+        let drawSize = NSSize(width: imageSize.width * scale, height: imageSize.height * scale)
+        let drawRect = NSRect(
+            x: bounds.midX - drawSize.width / 2,
+            y: bounds.midY - drawSize.height / 2,
+            width: drawSize.width,
+            height: drawSize.height
+        )
+
+        image.draw(
+            in: drawRect,
+            from: .zero,
+            operation: .copy,
+            fraction: 1,
+            respectFlipped: true,
+            hints: nil
+        )
+    }
+
+    private func drawReadabilityOverlay(in dirtyRect: NSRect) {
+        let color = isDarkAppearance
+            ? NSColor.black.withAlphaComponent(0.42)
+            : NSColor.white.withAlphaComponent(0.68)
+        color.setFill()
+        dirtyRect.fill()
     }
 
 }

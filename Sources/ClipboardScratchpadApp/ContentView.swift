@@ -8,6 +8,10 @@ struct ContentView: View {
     @State private var isShowingClips = false
     @State private var isShowingSettings = false
 
+    private var activeBackgroundImageURL: URL? {
+        store.paperFinishEnabled ? nil : store.customNoteBackgroundImageURL
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             if let warning = store.persistenceWarning {
@@ -20,91 +24,110 @@ struct ContentView: View {
                     .background(Color.orange.opacity(0.1))
             }
 
-            HStack {
-                Button {
-                    NotificationCenter.default.post(name: .scratchpadCloseRequested, object: nil)
-                } label: {
-                    Image(systemName: "xmark.circle")
-                        .font(.body)
-                        .frame(width: 30, height: 30)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .foregroundColor(.secondary)
-                .help("Close")
-                .accessibilityLabel("Close window")
-
-                Spacer()
-
-                HStack(spacing: 16) {
+            VStack(spacing: 0) {
+                HStack {
                     Button {
-                        store.isPinned.toggle()
+                        NotificationCenter.default.post(name: .scratchpadCloseRequested, object: nil)
                     } label: {
-                        Image(systemName: store.isPinned ? "pin.fill" : "pin")
+                        Image(systemName: "xmark.circle")
                             .font(.body)
                             .frame(width: 30, height: 30)
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                    .foregroundColor(store.isPinned ? .primary : .secondary)
-                    .help("Pin window")
-                    .accessibilityLabel("Pin window")
+                    .foregroundColor(.secondary)
+                    .help("Close")
+                    .accessibilityLabel("Close window")
 
-                    Button {
-                        store.refreshAccessibilityStatus()
-                        isShowingSettings = true
-                    } label: {
-                        Image(systemName: "gearshape")
-                            .font(.body)
-                            .frame(width: 30, height: 30)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .help("Settings")
-                    .accessibilityLabel("Settings")
-                    .popover(isPresented: $isShowingSettings, arrowEdge: .top) {
-                        SettingsView()
-                            .environmentObject(store)
-                            .preferredColorScheme(store.appearancePreference.colorScheme)
+                    Spacer()
+
+                    HStack(spacing: 16) {
+                        Button {
+                            store.isPinned.toggle()
+                        } label: {
+                            Image(systemName: store.isPinned ? "pin.fill" : "pin")
+                                .font(.body)
+                                .frame(width: 30, height: 30)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundColor(store.isPinned ? .primary : .secondary)
+                        .help("Pin window")
+                        .accessibilityLabel("Pin window")
+
+                        Button {
+                            store.refreshAccessibilityStatus()
+                            isShowingSettings = true
+                        } label: {
+                            Image(systemName: "gearshape")
+                                .font(.body)
+                                .frame(width: 30, height: 30)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .help("Settings")
+                        .accessibilityLabel("Settings")
+                        .popover(isPresented: $isShowingSettings, arrowEdge: .top) {
+                            SettingsView()
+                                .environmentObject(store)
+                                .preferredColorScheme(store.appearancePreference.colorScheme)
+                        }
                     }
                 }
-            }
-            .padding(.horizontal, 14)
-            .frame(height: 32)
-            .background {
-                if store.paperFinishEnabled {
-                    PaperTopBarBackground()
+                .padding(.horizontal, 14)
+                .frame(height: 32)
+                .background {
+                    if activeBackgroundImageURL != nil {
+                        CustomBackgroundChromeOverlay()
+                    } else if store.paperFinishEnabled {
+                        PaperTopBarBackground(paperFinishEnabled: store.paperFinishEnabled)
+                    } else {
+                        VisualEffectBar()
+                    }
+                }
+
+                if isShowingClips {
+                    ClipShelfSplitView(editor: {
+                        PlainTextView(
+                            text: $store.noteText,
+                            paperFinishEnabled: store.paperFinishEnabled,
+                            backgroundImageURL: activeBackgroundImageURL,
+                            drawsBackgroundImage: activeBackgroundImageURL == nil
+                        ) {
+                            store.noteDidChange()
+                        }
+                        .frame(minHeight: 96)
+                    }, shelf: {
+                        ClipShelfDrawer(
+                            clips: store.clips,
+                            previousAppName: store.previousExternalAppName,
+                            previousAppIcon: store.previousExternalAppIcon,
+                            canPasteToPreviousApp: store.hasPreviousExternalApplication,
+                            feedback: store.clipFeedback,
+                            onInsert: { store.insertClip($0) },
+                            onPaste: { store.pasteClipToPreviousApp($0) },
+                            onCopy: { store.copyClip($0) },
+                            onDelete: { store.deleteClip($0) },
+                            onClear: { store.clearClips() },
+                            onCollapse: { isShowingClips = false }
+                        )
+                        .frame(minHeight: 104, idealHeight: 220)
+                    })
+                    .frame(maxHeight: .infinity)
                 } else {
-                    VisualEffectBar()
-                }
-            }
-
-            if isShowingClips {
-                ClipShelfSplitView(editor: {
-                    PlainTextView(text: $store.noteText, paperFinishEnabled: store.paperFinishEnabled) {
+                    PlainTextView(
+                        text: $store.noteText,
+                        paperFinishEnabled: store.paperFinishEnabled,
+                        backgroundImageURL: activeBackgroundImageURL,
+                        drawsBackgroundImage: activeBackgroundImageURL == nil
+                    ) {
                         store.noteDidChange()
                     }
-                    .frame(minHeight: 96)
-                }, shelf: {
-                    ClipShelfDrawer(
-                        clips: store.clips,
-                        previousAppName: store.previousExternalAppName,
-                        previousAppIcon: store.previousExternalAppIcon,
-                        canPasteToPreviousApp: store.hasPreviousExternalApplication,
-                        feedback: store.clipFeedback,
-                        onInsert: { store.insertClip($0) },
-                        onPaste: { store.pasteClipToPreviousApp($0) },
-                        onCopy: { store.copyClip($0) },
-                        onDelete: { store.deleteClip($0) },
-                        onClear: { store.clearClips() },
-                        onCollapse: { isShowingClips = false }
-                    )
-                    .frame(minHeight: 104, idealHeight: 220)
-                })
-                .frame(maxHeight: .infinity)
-            } else {
-                PlainTextView(text: $store.noteText, paperFinishEnabled: store.paperFinishEnabled) {
-                    store.noteDidChange()
+                }
+            }
+            .background {
+                if let url = activeBackgroundImageURL {
+                    CustomNoteBackground(url: url)
                 }
             }
 
@@ -384,22 +407,37 @@ private struct VisualEffectBar: NSViewRepresentable {
 }
 
 private struct PaperTopBarBackground: NSViewRepresentable {
+    var paperFinishEnabled: Bool
+
     func makeNSView(context: Context) -> PaperTopBarBackgroundView {
-        PaperTopBarBackgroundView()
+        let view = PaperTopBarBackgroundView()
+        view.paperFinishEnabled = paperFinishEnabled
+        return view
     }
 
     func updateNSView(_ nsView: PaperTopBarBackgroundView, context: Context) {
+        nsView.paperFinishEnabled = paperFinishEnabled
         nsView.needsDisplay = true
     }
 }
 
 private final class PaperTopBarBackgroundView: NSView {
+    var paperFinishEnabled: Bool = true {
+        didSet {
+            needsDisplay = true
+        }
+    }
     override func viewDidChangeEffectiveAppearance() {
         super.viewDidChangeEffectiveAppearance()
         needsDisplay = true
     }
 
     override func draw(_ dirtyRect: NSRect) {
+        guard paperFinishEnabled else {
+            super.draw(dirtyRect)
+            return
+        }
+
         let appearance = isDarkAppearance ? PaperTexture.Appearance.dark : .light
         let base = appearance.baseColor
         NSColor(
@@ -416,6 +454,116 @@ private final class PaperTopBarBackgroundView: NSView {
 
     private var isDarkAppearance: Bool {
         effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+    }
+}
+
+private struct CustomBackgroundChromeOverlay: NSViewRepresentable {
+    func makeNSView(context: Context) -> CustomBackgroundChromeOverlayView {
+        CustomBackgroundChromeOverlayView()
+    }
+
+    func updateNSView(_ nsView: CustomBackgroundChromeOverlayView, context: Context) {
+        nsView.needsDisplay = true
+    }
+}
+
+private final class CustomBackgroundChromeOverlayView: NSView {
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        needsDisplay = true
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        let color = isDarkAppearance
+            ? NSColor.black.withAlphaComponent(0.16)
+            : NSColor.white.withAlphaComponent(0.22)
+        color.setFill()
+        dirtyRect.fill()
+    }
+
+    private var isDarkAppearance: Bool {
+        effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+    }
+}
+
+private struct CustomNoteBackground: NSViewRepresentable {
+    let url: URL
+
+    func makeNSView(context: Context) -> CustomNoteBackgroundView {
+        let view = CustomNoteBackgroundView()
+        view.backgroundImageURL = url
+        return view
+    }
+
+    func updateNSView(_ nsView: CustomNoteBackgroundView, context: Context) {
+        nsView.backgroundImageURL = url
+    }
+}
+
+private final class CustomNoteBackgroundView: NSView {
+    var backgroundImageURL: URL? {
+        didSet {
+            if backgroundImageURL != oldValue {
+                backgroundImage = backgroundImageURL.flatMap(NSImage.init(contentsOf:))
+            }
+            needsDisplay = true
+        }
+    }
+
+    private var backgroundImage: NSImage?
+
+    override var isFlipped: Bool {
+        true
+    }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        needsDisplay = true
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        guard let backgroundImage else {
+            super.draw(dirtyRect)
+            return
+        }
+
+        drawBackgroundImage(backgroundImage)
+        drawReadabilityOverlay(in: dirtyRect)
+    }
+
+    private var isDarkAppearance: Bool {
+        effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+    }
+
+    private func drawBackgroundImage(_ image: NSImage) {
+        let imageSize = image.size
+        guard imageSize.width > 0, imageSize.height > 0, bounds.width > 0, bounds.height > 0 else { return }
+
+        let scale = max(bounds.width / imageSize.width, bounds.height / imageSize.height)
+        let drawSize = NSSize(width: imageSize.width * scale, height: imageSize.height * scale)
+        let drawRect = NSRect(
+            x: bounds.midX - drawSize.width / 2,
+            y: bounds.midY - drawSize.height / 2,
+            width: drawSize.width,
+            height: drawSize.height
+        )
+
+        image.draw(
+            in: drawRect,
+            from: .zero,
+            operation: .copy,
+            fraction: 1,
+            respectFlipped: true,
+            hints: nil
+        )
+    }
+
+    private func drawReadabilityOverlay(in dirtyRect: NSRect) {
+        let color = isDarkAppearance
+            ? NSColor.black.withAlphaComponent(0.42)
+            : NSColor.white.withAlphaComponent(0.68)
+        color.setFill()
+        dirtyRect.fill()
     }
 }
 
@@ -470,6 +618,36 @@ private struct SettingsView: View {
                 Toggle("", isOn: $store.paperFinishEnabled)
                     .labelsHidden()
                     .toggleStyle(.switch)
+            }
+
+            Divider()
+
+            SettingsRow(
+                systemSymbolName: "photo",
+                title: "Background Image",
+                subtitle: store.customNoteBackgroundDisplayName ?? "None"
+            ) {
+                HStack(spacing: 8) {
+                    if let url = store.customNoteBackgroundImageURL,
+                       let image = NSImage(contentsOf: url) {
+                        Image(nsImage: image)
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(width: 28, height: 28)
+                            .clipShape(RoundedRectangle(cornerRadius: 4))
+                    }
+
+                    Button(store.customNoteBackgroundImageURL == nil ? "Choose" : "Change") {
+                        store.chooseCustomNoteBackground()
+                    }
+                    .controlSize(.small)
+
+                    Button("Remove") {
+                        store.removeCustomNoteBackground()
+                    }
+                    .controlSize(.small)
+                    .disabled(store.customNoteBackgroundImageURL == nil)
+                }
             }
 
             Divider()

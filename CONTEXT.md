@@ -67,6 +67,43 @@ A persisted Settings preference that defaults on and controls whether the editab
 When off, the editor uses the native text view background.
 _Avoid_: temporary per-window state, intensity controls, texture style choices, or a second custom flat editor theme.
 
+**Custom Note Background**:
+A user-selected image applied only as an aesthetic background for the editable scratchpad surface.
+_Avoid_: treating the image as note content, copying it with Copy All, exporting it, capturing it from the clipboard, or making it part of the text model.
+
+**Custom Note Background import**:
+Choosing a custom note background imports a local copy into Clipboard Scratchpad's Application Support data.
+_Avoid_: linking to the original selected file, depending on Downloads or external folders, cloud-only references, or storing raw image data inside the main scratchpad JSON.
+
+**Custom Note Background display**:
+A custom note background fills the editable scratchpad surface with centered aspect-fill cropping as the note resizes.
+_Avoid_: stretching, tiling, letterboxing, or adding fit-mode controls before there is a clear user need.
+
+**Custom Note Background readability**:
+A custom note background always has an automatic fixed readability overlay between the image and note text.
+_Avoid_: relying on users to choose quiet images, adding opacity sliders, or adding image-editing controls in v1.
+
+**Custom Note Background and Paper Finish**:
+Custom Note Background and Paper Finish are mutually exclusive note surface treatments.
+When Paper Finish is enabled, it visually takes precedence without removing the selected custom note background from Settings.
+_Avoid_: layering paper grain over the custom image, duplicating the image in the top bar, deleting the selected image when Paper Finish is enabled, or showing both treatments as active at the same time.
+
+**Custom Note Background scope**:
+Custom note background applies to the editable scratchpad surface and top bar, matching the paper finish scope.
+_Avoid_: extending the custom image into the footer, Settings, Clip Shelf, split divider, or other app chrome.
+
+**Custom Note Background setting**:
+The custom note background is managed from Settings under Paper Finish with choose, change, and remove controls.
+_Avoid_: putting background controls in the main note toolbar or adding frequent-action affordances for a rarely changed personalization setting.
+
+**Custom Note Background media**:
+Custom note backgrounds accept common static image files only, such as PNG, JPEG, HEIC, and TIFF.
+_Avoid_: animated backgrounds, PDFs, SVGs, videos, folders, or live wallpaper behavior.
+
+**Custom Note Background asset**:
+Imported custom note backgrounds are normalized into a reasonably sized app-owned static image asset for display.
+_Avoid_: storing full-resolution originals, preserving animation, repeatedly decoding very large source images, or placing image data in the scratchpad text state.
+
 **Dark paper finish**:
 The dark-mode version of paper finish, using a warm charcoal editor surface with very low-contrast grain.
 _Avoid_: beige paper in dark mode, bright speckles, or a texture so strong that it reads as visual noise.
