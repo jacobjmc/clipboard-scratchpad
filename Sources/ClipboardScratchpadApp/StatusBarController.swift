@@ -223,6 +223,15 @@ final class StatusBarController: NSObject, NSPopoverDelegate, NSWindowDelegate {
 
     private func showStatusMenu() {
         let menu = NSMenu()
+        let showItem = NSMenuItem(
+            title: "Show PaperPad",
+            action: #selector(showPaperPadFromMenu),
+            keyEquivalent: ""
+        )
+        showItem.target = self
+        menu.addItem(showItem)
+        menu.addItem(.separator())
+
         let resetItem = NSMenuItem(
             title: "Reset Window Size and Location",
             action: #selector(resetWindowSizeAndLocation),
@@ -231,10 +240,33 @@ final class StatusBarController: NSObject, NSPopoverDelegate, NSWindowDelegate {
         resetItem.target = self
         resetItem.isEnabled = store.windowFrame != nil || floatingWindow != nil || popover.contentViewController?.view.window != nil
         menu.addItem(resetItem)
+        menu.addItem(.separator())
+
+        let quitItem = NSMenuItem(
+            title: "Quit PaperPad",
+            action: #selector(quitPaperPad),
+            keyEquivalent: ""
+        )
+        quitItem.target = self
+        menu.addItem(quitItem)
 
         statusItem.menu = menu
         statusItem.button?.performClick(nil)
         statusItem.menu = nil
+    }
+
+    @objc private func showPaperPadFromMenu() {
+        if presentationState.mode == .popover, detachedWindow?.isVisible == true {
+            bringDetachedWindowForward()
+            return
+        }
+        syncPresentationStateWithAppKit()
+        presentationState.visibility = .visible
+        applyPresentationState(statusItem.button)
+    }
+
+    @objc private func quitPaperPad() {
+        NSApp.terminate(nil)
     }
 
     @objc private func resetWindowSizeAndLocation() {

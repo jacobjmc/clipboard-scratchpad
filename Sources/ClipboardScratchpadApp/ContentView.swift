@@ -704,6 +704,19 @@ private struct SettingsView: View {
                 }
                 .controlSize(.small)
             }
+
+            Divider()
+
+            SettingsRow(
+                systemSymbolName: "power",
+                title: "Quit PaperPad",
+                subtitle: "Close the app."
+            ) {
+                Button("Quit") {
+                    NSApp.terminate(nil)
+                }
+                .controlSize(.small)
+            }
         }
         .padding(18)
         .frame(width: 430)
