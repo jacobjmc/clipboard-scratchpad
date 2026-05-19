@@ -87,32 +87,38 @@ struct ContentView: View {
                 }
 
                 if isShowingClips {
-                    ClipShelfSplitView(editor: {
-                        PlainTextView(
-                            text: $store.noteText,
-                            paperFinishEnabled: store.paperFinishEnabled,
-                            backgroundImageURL: activeBackgroundImageURL,
-                            drawsBackgroundImage: activeBackgroundImageURL == nil
-                        ) {
-                            store.noteDidChange()
-                        }
-                        .frame(minHeight: 96)
-                    }, shelf: {
-                        ClipShelfDrawer(
-                            clips: store.clips,
-                            previousAppName: store.previousExternalAppName,
-                            previousAppIcon: store.previousExternalAppIcon,
-                            canPasteToPreviousApp: store.hasPreviousExternalApplication,
-                            feedback: store.clipFeedback,
-                            onInsert: { store.insertClip($0) },
-                            onPaste: { store.pasteClipToPreviousApp($0) },
-                            onCopy: { store.copyClip($0) },
-                            onDelete: { store.deleteClip($0) },
-                            onClear: { store.clearClips() },
-                            onCollapse: { isShowingClips = false }
-                        )
-                        .frame(minHeight: 104, idealHeight: 220)
-                    })
+                    ClipShelfSplitView(
+                        preferredShelfHeight: store.clips.isEmpty ? 92 : 220,
+                        minimumShelfHeight: store.clips.isEmpty ? 92 : 104,
+                        editor: {
+                            PlainTextView(
+                                text: $store.noteText,
+                                paperFinishEnabled: store.paperFinishEnabled,
+                                backgroundImageURL: activeBackgroundImageURL,
+                                drawsBackgroundImage: activeBackgroundImageURL == nil
+                            ) {
+                                store.noteDidChange()
+                            }
+                            .frame(minHeight: 96)
+                        }, shelf: {
+                            ClipShelfDrawer(
+                                clips: store.clips,
+                                previousAppName: store.previousExternalAppName,
+                                previousAppIcon: store.previousExternalAppIcon,
+                                canPasteToPreviousApp: store.hasPreviousExternalApplication,
+                                feedback: store.clipFeedback,
+                                onInsert: { store.insertClip($0) },
+                                onPaste: { store.pasteClipToPreviousApp($0) },
+                                onCopy: { store.copyClip($0) },
+                                onDelete: { store.deleteClip($0) },
+                                onClear: { store.clearClips() },
+                                onCollapse: { isShowingClips = false }
+                            )
+                            .frame(
+                                minHeight: store.clips.isEmpty ? 92 : 104,
+                                idealHeight: store.clips.isEmpty ? 92 : 220
+                            )
+                        })
                     .frame(maxHeight: .infinity)
                 } else {
                     PlainTextView(
@@ -206,11 +212,17 @@ struct ContentView: View {
 private struct ClipShelfSplitView<Editor: View, Shelf: View>: NSViewRepresentable {
     let editor: Editor
     let shelf: Shelf
+    let preferredShelfHeight: CGFloat
+    let minimumShelfHeight: CGFloat
 
     init(
+        preferredShelfHeight: CGFloat = 220,
+        minimumShelfHeight: CGFloat = 104,
         @ViewBuilder editor: () -> Editor,
         @ViewBuilder shelf: () -> Shelf
     ) {
+        self.preferredShelfHeight = preferredShelfHeight
+        self.minimumShelfHeight = minimumShelfHeight
         self.editor = editor()
         self.shelf = shelf()
     }
@@ -229,6 +241,8 @@ private struct ClipShelfSplitView<Editor: View, Shelf: View>: NSViewRepresentabl
     }
 
     func updateNSView(_ splitView: ClipShelfSplitContainerView, context: Context) {
+        splitView.preferredShelfHeight = preferredShelfHeight
+        splitView.minimumShelfHeight = minimumShelfHeight
         context.coordinator.editorView?.rootView = AnyView(editor)
         context.coordinator.shelfView?.rootView = AnyView(shelf)
     }
@@ -247,10 +261,23 @@ private final class ClipShelfSplitContainerView: NSView {
     private let dividerHitOutsetAbove: CGFloat = 18
     private let dividerHitOutsetBelow: CGFloat = 4
     private let trailingScrollerWidth: CGFloat = 72
-    private let preferredShelfHeight: CGFloat = 220
     private let minimumEditorHeight: CGFloat = 96
-    private let minimumShelfHeight: CGFloat = 104
     private let dividerThickness: CGFloat = 1
+
+    var preferredShelfHeight: CGFloat = 220 {
+        didSet {
+            guard preferredShelfHeight != oldValue else { return }
+            dividerPosition = nil
+            needsLayout = true
+        }
+    }
+    var minimumShelfHeight: CGFloat = 104 {
+        didSet {
+            guard minimumShelfHeight != oldValue else { return }
+            dividerPosition = nil
+            needsLayout = true
+        }
+    }
 
     private weak var editorView: NSView?
     private weak var shelfView: NSView?
@@ -381,7 +408,7 @@ private final class ClipShelfSplitContainerView: NSView {
         if let dividerPosition {
             return constrainedDividerPosition(dividerPosition)
         }
-        return constrainedDividerPosition(bounds.height - preferredShelfHeight - dividerThickness)
+        return constrainedDividerPosition(preferredShelfHeight)
     }
 
     private func constrainedDividerPosition(_ position: CGFloat) -> CGFloat {
@@ -969,6 +996,7 @@ private struct ClipShelfDrawer: View {
                 .frame(maxHeight: .infinity)
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(Color(nsColor: .windowBackgroundColor))
     }
 }
