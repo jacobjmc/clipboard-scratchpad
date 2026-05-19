@@ -12,7 +12,7 @@ let package = Package(
         .executableTarget(
             name: "ClipboardScratchpadApp",
             dependencies: ["ClipboardScratchpadLib"],
-            resources: [.process("Resources")]
+            exclude: ["Resources"]
         ),
         .testTarget(
             name: "ClipboardScratchpadLibTests",

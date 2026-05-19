@@ -25,7 +25,7 @@ mkdir -p "$MACOS_DIR" "$RESOURCES_DIR"
 cp "$ROOT_DIR/Packaging/Info.plist" "$CONTENTS_DIR/Info.plist"
 cp "$ROOT_DIR/.build/$CONFIGURATION/$EXECUTABLE_NAME" "$MACOS_DIR/$EXECUTABLE_NAME"
 chmod 755 "$MACOS_DIR/$EXECUTABLE_NAME"
-cp "$ROOT_DIR/paperpad-menubar.png" "$RESOURCES_DIR/PaperPadMenuBar.png"
+cp "$ROOT_DIR/Packaging/Resources/PaperPadMenuBar.png" "$RESOURCES_DIR/PaperPadMenuBar.png"
 
 rm -rf "$ICONSET_DIR"
 mkdir -p "$ICONSET_DIR"
@@ -41,6 +41,8 @@ sips -z 512 512 "$ICON_SOURCE" --out "$ICONSET_DIR/icon_512x512.png" >/dev/null
 sips -z 1024 1024 "$ICON_SOURCE" --out "$ICONSET_DIR/icon_512x512@2x.png" >/dev/null
 iconutil -c icns "$ICONSET_DIR" -o "$RESOURCES_DIR/PaperPadAppIcon.icns"
 rm -rf "$ICONSET_DIR"
+
+xattr -cr "$APP_PATH"
 
 codesign --force \
   --sign "$SIGN_IDENTITY" \

@@ -108,13 +108,12 @@ final class StatusBarController: NSObject, NSPopoverDelegate, NSWindowDelegate {
     }
 
     private static func menuBarImage() -> NSImage? {
-        let image = Bundle.module.url(forResource: "paperpad-menubar", withExtension: "png")
+        let image = Bundle.main.url(forResource: "PaperPadMenuBar", withExtension: "png")
             .flatMap(NSImage.init(contentsOf:))
-            ?? Bundle.main.url(forResource: "PaperPadMenuBar", withExtension: "png")
-                .flatMap(NSImage.init(contentsOf:))
+            ?? NSImage(contentsOfFile: "Packaging/Resources/PaperPadMenuBar.png")
             ?? NSImage(systemSymbolName: "doc.on.clipboard", accessibilityDescription: "PaperPad")
 
-        image?.size = NSSize(width: 20, height: 20)
+        image?.size = NSSize(width: 18, height: 18)
         image?.isTemplate = false
         return image
     }

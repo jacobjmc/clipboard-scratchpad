@@ -15,6 +15,7 @@ ENTITLEMENTS="$ROOT_DIR/Packaging/PaperPad.entitlements"
 "$ROOT_DIR/scripts/build-app.sh"
 
 cp "$PROVISIONING_PROFILE" "$APP_PATH/Contents/embedded.provisionprofile"
+xattr -cr "$APP_PATH"
 
 codesign --force \
   --sign "$APP_SIGN_IDENTITY" \
@@ -22,6 +23,7 @@ codesign --force \
   --options runtime \
   "$APP_PATH"
 
+xattr -cr "$APP_PATH"
 codesign --verify --deep --strict --verbose=2 "$APP_PATH"
 
 rm -f "$PKG_PATH"
