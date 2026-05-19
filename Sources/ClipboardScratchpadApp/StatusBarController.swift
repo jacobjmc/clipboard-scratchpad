@@ -41,7 +41,9 @@ final class StatusBarController: NSObject, NSPopoverDelegate, NSWindowDelegate {
             .store(in: &cancellables)
 
         if let button = statusItem.button {
-            button.image = NSImage(systemSymbolName: "doc.on.clipboard", accessibilityDescription: "Clipboard Scratchpad")
+            let image = Self.menuBarImage()
+            image?.accessibilityDescription = "PaperPad"
+            button.image = image
             button.action = #selector(toggleVisibility)
             button.target = self
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
@@ -103,6 +105,18 @@ final class StatusBarController: NSObject, NSPopoverDelegate, NSWindowDelegate {
             guard let application = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication else { return }
             self?.store.recordExternalApplication(application)
         }
+    }
+
+    private static func menuBarImage() -> NSImage? {
+        let image = Bundle.module.url(forResource: "paperpad-menubar", withExtension: "png")
+            .flatMap(NSImage.init(contentsOf:))
+            ?? Bundle.main.url(forResource: "PaperPadMenuBar", withExtension: "png")
+                .flatMap(NSImage.init(contentsOf:))
+            ?? NSImage(systemSymbolName: "doc.on.clipboard", accessibilityDescription: "PaperPad")
+
+        image?.size = NSSize(width: 20, height: 20)
+        image?.isTemplate = false
+        return image
     }
 
     deinit {

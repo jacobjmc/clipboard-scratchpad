@@ -11,7 +11,8 @@ let package = Package(
         .target(name: "ClipboardScratchpadLib"),
         .executableTarget(
             name: "ClipboardScratchpadApp",
-            dependencies: ["ClipboardScratchpadLib"]
+            dependencies: ["ClipboardScratchpadLib"],
+            resources: [.process("Resources")]
         ),
         .testTarget(
             name: "ClipboardScratchpadLibTests",
